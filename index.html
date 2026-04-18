@@ -1377,16 +1377,34 @@ async function createFirebaseRoom(code, p1uid, p2uid, stake, mode) {
   await db.ref(`rooms/${code}`).set(roomData);
   currentRoomCode = code;
 }
+function applyOpponentGrid(oppGrid) {
+  const oppNum = myPlayerNum === 1 ? 2 : 1;
+  
+  oppGrid.forEach((oppOwner, idx) => {
+    if (idx >= cells.length) return;
+    
+    const cell = cells[idx];
+    
+    // Opponent owns this cell
+    if (oppOwner === oppNum) {
+      // Only update if we don't already own it
+      if (cell.owner !== myPlayerNum) {
+        cell.owner = oppNum;
+        setCellVisual(cell, oppNum);
+      }
+    }
+  });
+}
 
 function subscribeToRoom(code) {
   if (!firebaseReady) return;
   if (roomRef) roomRef.off();
   roomRef = db.ref(`rooms/${code}`);
-
+ 
   roomRef.on('value', snap => {
     if (!snap.exists()) return;
     const room = snap.val();
-
+ 
     // Host: detect when opponent joins
     if (myPlayerNum === 1 && room.p2 && document.getElementById('screen-room').classList.contains('active')) {
       opponentName = room.p2.username;
@@ -1394,7 +1412,7 @@ function subscribeToRoom(code) {
       gameMode     = room.gameMode;
       updateRoomPlayersList(currentUser.username, opponentName, room.stakeAmount);
     }
-
+ 
     // Countdown triggered by host
     if (room.status === 'countdown' && !gameRunning && !countdownActive) {
       startCountdown(
@@ -1403,23 +1421,37 @@ function subscribeToRoom(code) {
         () => startGameScreen(false, true)
       );
     }
-
-    // If the room already moved to playing before we subscribed,
-    // start the game immediately so the late joiner does not freeze.
+ 
+    // If room already playing, join immediately
     if (room.status === 'playing' && !gameRunning && !countdownActive) {
       startGameScreen(false, true);
     }
-
-    // Sync opponent score during game
+ 
+    // ═══ NEW: Sync opponent's grid state ═══
     if (room.status === 'playing' && gameRunning) {
       const oppKey = myPlayerNum === 1 ? 'p2' : 'p1';
       const oppData = room[oppKey];
-      if (oppData) {
-        opponentScore = oppData.score || 0;
-        updateOnlineOpponentDisplay(oppData);
+      
+      if (oppData && oppData.grid) {
+        // Merge opponent's cells into our local grid
+        applyOpponentGrid(oppData.grid);
+        
+        // Update opponent display
+        document.getElementById('score2').textContent = oppData.score || 0;
+        const tc2 = document.getElementById('tapCount2');
+        if (tc2) tc2.textContent = (oppData.taps || 0) + ' TAPS';
+        document.getElementById('combo2').textContent = `OPP COMBO x${oppData.combo || 1}`;
+        document.getElementById('combo2').classList.toggle('hot', (oppData.combo || 1) >= 3);
+        
+        // Update territory bar
+        const s1 = cells.filter(c => c.owner === myPlayerNum).length;
+        const s2 = oppData.score || 0;
+        const total = s1 + s2;
+        const pct = total > 0 ? (s1 / total * 100) : 50;
+        document.getElementById('territoryFill').style.width = pct + '%';
       }
     }
-
+ 
     // Game ended by opponent
     if (room.status === 'finished' && gameRunning) {
       forceEndGame(room);
@@ -1437,11 +1469,22 @@ function updateOnlineOpponentDisplay(oppData) {
   document.getElementById('territoryFill').style.width = pct + '%';
 }
 
-async function syncMyScore() {
+function syncMyGrid() {
   if (!firebaseReady || !currentRoomCode || !gameRunning) return;
-  const s1 = cells.filter(c => c.owner === 1).length;
-  const myKey = `rooms/${currentRoomCode}/p${myPlayerNum}/score`;
-  db.ref(myKey).set(s1).catch(() => {});
+  
+  // Build grid state array: [owner, owner, owner, ...]
+  const gridState = cells.map(c => c.owner);
+  
+  // Also sync taps and combo for display
+  const myData = {
+    grid: gridState,
+    score: cells.filter(c => c.owner === myPlayerNum).length,
+    taps: myPlayerNum === 1 ? taps1 : taps2,
+    combo: myPlayerNum === 1 ? combo1 : combo2,
+    timestamp: Date.now()
+  };
+  
+  db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}`).update(myData).catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1654,6 +1697,34 @@ function invadeCell(player) {
     for (let b = 0; b < 2; b++) invadeCell(player);
   }
   setTimeout(() => { if (target.el) target.el.classList.remove('flash-p' + player); }, 200);
+if (isOnlinePvP && player === myPlayerNum) {
+    if (!invadeCell._syncTimer) {
+      invadeCell._syncTimer = setTimeout(() => {
+        syncMyGrid();
+        invadeCell._syncTimer = null;
+      }, 50);
+    }
+  }
+}
+function applyOpponentGrid(oppGrid) {
+  const oppNum = myPlayerNum === 1 ? 2 : 1;
+  
+  oppGrid.forEach((oppOwner, idx) => {
+    if (idx >= cells.length) return;
+    
+    const cell = cells[idx];
+    
+    // Opponent owns this cell
+    if (oppOwner === oppNum) {
+      // Only update if we don't already own it
+      if (cell.owner !== myPlayerNum) {
+        cell.owner = oppNum;
+        setCellVisual(cell, oppNum);
+      }
+    }
+    // Opponent says it's neutral, but we might own it
+    // (Don't override our ownership)
+  });
 }
 
 function aiInvade(stealChance, comboMax) {
@@ -1731,8 +1802,9 @@ function startTimer() {
     }, cfg.interval);
   }
 
-  if (isOnlinePvP) {
-    syncInterval = setInterval(syncMyScore, SYNC_INTERVAL_MS);
+if (isOnlinePvP) {
+    syncMyGrid(); // Sync immediately
+    syncInterval = setInterval(syncMyGrid, 200); // Then every 200ms
   }
 
   timerInterval = setInterval(() => {
