@@ -747,6 +747,7 @@ let walletBalance   = 0;
 
 // Game state
 let gameRunning     = false;
+let countdownActive = false;
 let isVsPC          = false;
 let isOnlinePvP     = false;
 let gameMode        = 30;
@@ -1323,6 +1324,7 @@ async function leaveRoom() {
     }
     currentRoomCode = null;
   }
+  countdownActive = false;
   // Reset UI
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
@@ -1364,12 +1366,18 @@ function subscribeToRoom(code) {
     }
 
     // Countdown triggered by host
-    if (room.status === 'countdown' && !gameRunning) {
+    if (room.status === 'countdown' && !gameRunning && !countdownActive) {
       startCountdown(
         myPlayerNum === 1 ? currentUser.username : room.p1.username,
         myPlayerNum === 1 ? (room.p2?.username || opponentName) : room.p1.username,
         () => startGameScreen(false, true)
       );
+    }
+
+    // If the room already moved to playing before we subscribed,
+    // start the game immediately so the late joiner does not freeze.
+    if (room.status === 'playing' && !gameRunning && !countdownActive) {
+      startGameScreen(false, true);
     }
 
     // Sync opponent score during game
@@ -1416,6 +1424,7 @@ function startCountdown(name1, name2, onComplete) {
   document.getElementById('cdName1').textContent = name1;
   document.getElementById('cdName2').textContent = name2;
   overlay.classList.add('show');
+  countdownActive = true;
 
   let count = 3;
   numEl.textContent = count;
@@ -1424,6 +1433,7 @@ function startCountdown(name1, name2, onComplete) {
     count--;
     if (count <= 0) {
       clearInterval(iv);
+      countdownActive = false;
       numEl.textContent = 'GO!';
       setTimeout(() => {
         overlay.classList.remove('show');
@@ -1864,6 +1874,7 @@ function backToLobby() {
   clearInterval(syncInterval);
   if (roomRef) { roomRef.off(); roomRef = null; }
   gameRunning = false;
+  countdownActive = false;
   isVsPC = false;
   isOnlinePvP = false;
   currentRoomCode = null;
