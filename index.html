@@ -747,6 +747,7 @@ let walletBalance   = 0;
 
 // Game state
 let gameRunning     = false;
+let countdownActive = false;
 let isVsPC          = false;
 let isOnlinePvP     = false;
 let gameMode        = 30;
@@ -807,6 +808,8 @@ function showScreen(id) {
 // ═══════════════════════════════════════════════════════════
 //  WALLET CONNECTION
 // ═══════════════════════════════════════════════════════════
+let walletListenersSet = false; // Flag to ensure listeners are set only once
+
 async function connectWalletAuth() {
   walletAddress = await doConnectWallet();
   const el = document.getElementById('authWalletStatus');
@@ -838,7 +841,7 @@ async function doConnectWallet() {
         if (confirm('Open in MetaMask browser?')) window.location.href = deepLink;
       }, 300);
     } else {
-      showToast('MetaMask not found — install at metamask.io');
+      showToast('🦊 MetaMask not found — install at metamask.io');
     }
     return null;
   }
@@ -848,6 +851,19 @@ async function doConnectWallet() {
     if (!accounts || accounts.length === 0) { showToast('No accounts found'); return null; }
     const addr = accounts[0];
 
+    // Set event listeners only once
+    if (!walletListenersSet) {
+      window.ethereum.on('accountsChanged', a => { 
+        if (a.length > 0) {
+          walletAddress = a[0]; 
+          updateLobbyWalletUI(); 
+        }
+      });
+      window.ethereum.on('chainChanged', () => window.location.reload());
+      walletListenersSet = true;
+    }
+
+    // Check and switch chain if needed
     window.ethereum.request({ method: 'eth_chainId' }).then(chainId => {
       if (chainId !== POLYGON_CHAIN_ID && chainId !== POLYGON_TESTNET_ID) {
         document.getElementById('networkWarn')?.classList.add('show');
@@ -860,19 +876,21 @@ async function doConnectWallet() {
       }
     }).catch(() => {});
 
+    // Fetch balance but update UI regardless
     window.ethereum.request({ method: 'eth_getBalance', params: [addr, 'latest'] }).then(hex => {
       walletBalance = parseInt(hex, 16) / 1e18;
+    }).catch(() => {
+      walletBalance = 0; // Default to 0 on error
+    }).finally(() => {
       updateLobbyWalletUI();
-    }).catch(() => {});
+    });
 
-    window.ethereum.on('accountsChanged', a => { walletAddress = a[0]; updateLobbyWalletUI(); });
-    window.ethereum.on('chainChanged', () => window.location.reload());
-
+    showToast('✓ Wallet connected!');
     return addr;
 
   } catch(err) {
-    if (err.code === 4001) { showToast('Wallet connection rejected'); }
-    else { showToast('Wallet error: ' + (err.message || 'unknown')); }
+    if (err.code === 4001) { showToast('❌ Wallet connection rejected'); }
+    else { showToast('⚠️ Wallet error: ' + (err.message || 'unknown')); }
     return null;
   }
 }
@@ -1306,6 +1324,7 @@ async function leaveRoom() {
     }
     currentRoomCode = null;
   }
+  countdownActive = false;
   // Reset UI
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
@@ -1347,12 +1366,18 @@ function subscribeToRoom(code) {
     }
 
     // Countdown triggered by host
-    if (room.status === 'countdown' && !gameRunning) {
+    if (room.status === 'countdown' && !gameRunning && !countdownActive) {
       startCountdown(
         myPlayerNum === 1 ? currentUser.username : room.p1.username,
         myPlayerNum === 1 ? (room.p2?.username || opponentName) : room.p1.username,
         () => startGameScreen(false, true)
       );
+    }
+
+    // If the room already moved to playing before we subscribed,
+    // start the game immediately so the late joiner does not freeze.
+    if (room.status === 'playing' && !gameRunning && !countdownActive) {
+      startGameScreen(false, true);
     }
 
     // Sync opponent score during game
@@ -1399,6 +1424,7 @@ function startCountdown(name1, name2, onComplete) {
   document.getElementById('cdName1').textContent = name1;
   document.getElementById('cdName2').textContent = name2;
   overlay.classList.add('show');
+  countdownActive = true;
 
   let count = 3;
   numEl.textContent = count;
@@ -1407,6 +1433,7 @@ function startCountdown(name1, name2, onComplete) {
     count--;
     if (count <= 0) {
       clearInterval(iv);
+      countdownActive = false;
       numEl.textContent = 'GO!';
       setTimeout(() => {
         overlay.classList.remove('show');
@@ -1847,6 +1874,7 @@ function backToLobby() {
   clearInterval(syncInterval);
   if (roomRef) { roomRef.off(); roomRef = null; }
   gameRunning = false;
+  countdownActive = false;
   isVsPC = false;
   isOnlinePvP = false;
   currentRoomCode = null;
