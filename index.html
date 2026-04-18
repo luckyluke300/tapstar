@@ -334,13 +334,29 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="auth-wrap">
     <div class="auth-box">
       <div class="auth-logo">TAP<span>★</span>CHAIN</div>
-      <div class="auth-title">// CREATE YOUR IDENTITY</div>
-      <input class="auth-input" id="authUsername" maxlength="16" placeholder="USERNAME" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
-      <div class="auth-sub">// 3–16 CHARS • LETTERS, NUMBERS, UNDERSCORE<br>// USERNAME IS PERMANENT AND VISIBLE TO ALL PLAYERS</div>
-      <button class="auth-wallet-btn" onclick="connectWalletAuth()">📲 LINK WALLET (OPTIONAL)</button>
-      <div class="auth-wallet-status" id="authWalletStatus">NO WALLET LINKED — SKIP TO PLAY FREE</div>
-      <div class="auth-error" id="authError"></div>
-      <button class="auth-btn" onclick="createAccount()">ENTER THE ARENA →</button>
+      <div class="auth-title" id="authTitle">// CREATE YOUR ACCOUNT</div>
+      
+      <div id="signupForm">
+        <input class="auth-input" id="authEmail" type="email" placeholder="EMAIL" autocomplete="email">
+        <input class="auth-input" id="authPassword" type="password" placeholder="PASSWORD (MIN 6 CHARS)" autocomplete="new-password" minlength="6">
+        <input class="auth-input" id="authUsername" maxlength="16" placeholder="USERNAME (GAME ID)" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+        <div class="auth-sub">// USERNAME: 3–16 CHARS • LETTERS, NUMBERS, UNDERSCORE<br>// USED FOR PRIVATE ROOMS & VISIBLE TO ALL PLAYERS</div>
+        <button class="auth-wallet-btn" onclick="connectWalletAuth()">📲 LINK WALLET (OPTIONAL)</button>
+        <div class="auth-wallet-status" id="authWalletStatus">NO WALLET LINKED — SKIP TO PLAY FREE</div>
+        <div class="auth-error" id="authError"></div>
+        <button class="auth-btn" onclick="createAccount()">CREATE ACCOUNT →</button>
+        <div style="text-align:center;font-size:.65rem;color:#4a6a8a;letter-spacing:3px;padding:12px 0;">── OR ──</div>
+        <button class="auth-btn" style="background:transparent;border:1px solid var(--border);font-size:.75rem;" onclick="showLogin()">ALREADY HAVE AN ACCOUNT? LOGIN</button>
+      </div>
+
+      <div id="loginForm" style="display:none;">
+        <input class="auth-input" id="loginEmail" type="email" placeholder="EMAIL" autocomplete="email">
+        <input class="auth-input" id="loginPassword" type="password" placeholder="PASSWORD" autocomplete="current-password">
+        <div class="auth-error" id="loginError"></div>
+        <button class="auth-btn" onclick="loginAccount()">LOGIN →</button>
+        <div style="text-align:center;font-size:.65rem;color:#4a6a8a;letter-spacing:3px;padding:12px 0;">── OR ──</div>
+        <button class="auth-btn" style="background:transparent;border:1px solid var(--border);font-size:.75rem;" onclick="showSignup()">CREATE NEW ACCOUNT</button>
+      </div>
     </div>
   </div>
 </div>
@@ -894,90 +910,173 @@ async function createAccount() {
 // ═══════════════════════════════════════════════════════════
 //  WALLET CONNECTION
 // ═══════════════════════════════════════════════════════════
-async function connectWalletAuth() {
-  walletAddress = await doConnectWallet();
-  const el = document.getElementById('authWalletStatus');
-  if (walletAddress) {
-    el.textContent = '✓ WALLET LINKED: ' + walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-    el.classList.add('connected');
-  }
-}
-
-async function connectWalletLobby() {
-  walletAddress = await doConnectWallet();
-  if (walletAddress) {
-    updateLobbyWalletUI();
-    if (currentUser && firebaseReady) {
-      firestore.collection('users').doc(currentUser.uid).update({ walletAddress }).catch(() => {});
-    }
-    if (currentUser) currentUser.walletAddress = walletAddress;
-  }
-}
-
-async function doConnectWallet() {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (!window.ethereum) {
-    if (isMobile) {
-      const deepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
-      showToast('📲 Open this page in MetaMask browser to connect');
-      // Create a tap-to-open link
-      setTimeout(() => {
-        if (confirm('Open in MetaMask browser?')) window.location.href = deepLink;
-      }, 300);
+async function initApp() {
+  if (!firebaseReady) {
+    const saved = LS.get('tapstar_user');
+    if (saved) {
+      currentUser = saved;
+      loadLobby();
+      showScreen('screen-lobby');
     } else {
-      showToast('MetaMask not found — install at metamask.io');
+      showScreen('screen-auth');
     }
-    return null;
+    return;
+  }
+
+  auth.onAuthStateChanged(async user => {
+    if (user) {
+      const snap = await firestore.collection('users').doc(user.uid).get();
+      if (snap.exists) {
+        currentUser = { uid: user.uid, ...snap.data() };
+        LS.set('tapstar_user', currentUser);
+        loadLobby();
+        showScreen('screen-lobby');
+      } else {
+        // Logged in but no profile → shouldn't happen, send to auth
+        await auth.signOut();
+        showScreen('screen-auth');
+      }
+    } else {
+      showScreen('screen-auth');
+    }
+  });
+}
+
+function showLogin() {
+  document.getElementById('signupForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = '// LOGIN TO YOUR ACCOUNT';
+  document.getElementById('loginError').textContent = '';
+}
+
+function showSignup() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = '// CREATE YOUR ACCOUNT';
+  document.getElementById('authError').textContent = '';
+}
+
+async function createAccount() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const usernameRaw = document.getElementById('authUsername').value.trim().toUpperCase();
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+
+  if (!email || !email.includes('@')) {
+    errEl.textContent = '// INVALID EMAIL ADDRESS';
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = '// PASSWORD MUST BE AT LEAST 6 CHARACTERS';
+    return;
+  }
+  if (usernameRaw.length < 3) {
+    errEl.textContent = '// USERNAME TOO SHORT — MINIMUM 3 CHARACTERS';
+    return;
+  }
+  if (!/^[A-Z0-9_]+$/.test(usernameRaw)) {
+    errEl.textContent = '// INVALID CHARACTERS — LETTERS, NUMBERS, UNDERSCORE ONLY';
+    return;
+  }
+
+  const username = usernameRaw;
+
+  if (!firebaseReady) {
+    currentUser = { uid: 'local_' + Date.now(), username, email, walletAddress: walletAddress || null };
+    LS.set('tapstar_user', currentUser);
+    loadLobby();
+    showScreen('screen-lobby');
+    return;
   }
 
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || accounts.length === 0) { showToast('No accounts found'); return null; }
-    const addr = accounts[0];
+    errEl.textContent = '// CHECKING USERNAME...';
+    const snap = await firestore.collection('usernames').doc(username.toLowerCase()).get();
+    if (snap.exists) {
+      errEl.textContent = '// USERNAME TAKEN — CHOOSE ANOTHER';
+      return;
+    }
 
-    // Non-blocking: check chain
-    window.ethereum.request({ method: 'eth_chainId' }).then(chainId => {
-      if (chainId !== POLYGON_CHAIN_ID && chainId !== POLYGON_TESTNET_ID) {
-        document.getElementById('networkWarn')?.classList.add('show');
-        window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: POLYGON_CHAIN_ID }]
-        }).then(() => {
-          document.getElementById('networkWarn')?.classList.remove('show');
-        }).catch(() => {});
-      }
-    }).catch(() => {});
+    errEl.textContent = '// CREATING ACCOUNT...';
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    const uid = userCredential.user.uid;
 
-    // Non-blocking: get balance
-    window.ethereum.request({ method: 'eth_getBalance', params: [addr, 'latest'] }).then(hex => {
-      walletBalance = parseInt(hex, 16) / 1e18;
-      updateLobbyWalletUI();
-    }).catch(() => {});
+    const batch = firestore.batch();
+    batch.set(firestore.collection('users').doc(uid), {
+      username,
+      email,
+      walletAddress: walletAddress || null,
+      wins: 0, losses: 0, pvpWins: 0, totalPolWon: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.set(firestore.collection('usernames').doc(username.toLowerCase()), { uid });
+    await batch.commit();
 
-    window.ethereum.on('accountsChanged', a => { walletAddress = a[0]; updateLobbyWalletUI(); });
-    window.ethereum.on('chainChanged', () => window.location.reload());
+    currentUser = { uid, username, email, walletAddress: walletAddress || null };
+    LS.set('tapstar_user', currentUser);
+    loadLobby();
+    showScreen('screen-lobby');
 
-    return addr;
-
-  } catch(err) {
-    if (err.code === 4001) { showToast('Wallet connection rejected'); }
-    else { showToast('Wallet error: ' + (err.message || 'unknown')); }
-    return null;
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') {
+      errEl.textContent = '// EMAIL ALREADY REGISTERED — USE LOGIN INSTEAD';
+    } else if (e.code === 'auth/invalid-email') {
+      errEl.textContent = '// INVALID EMAIL FORMAT';
+    } else if (e.code === 'auth/weak-password') {
+      errEl.textContent = '// PASSWORD TOO WEAK — USE AT LEAST 6 CHARACTERS';
+    } else {
+      errEl.textContent = '// ERROR: ' + e.message;
+    }
   }
 }
 
-function updateLobbyWalletUI() {
-  if (!walletAddress) return;
-  const short = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-  const btn = document.getElementById('lobbyWalletBtn');
-  const addrEl = document.getElementById('lobbyWalletAddr');
-  const balEl = document.getElementById('lobbyWalletBal');
-  const inlineBtn = document.getElementById('lobbyWalletInline');
-  if (btn) { btn.textContent = '[ '+short+' ]'; btn.classList.add('connected'); }
-  if (addrEl) addrEl.textContent = short;
-  if (balEl) balEl.textContent = walletBalance.toFixed(4) + ' POL';
-  if (inlineBtn) inlineBtn.style.display = 'none';
+async function loginAccount() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  if (!email || !password) {
+    errEl.textContent = '// ENTER EMAIL AND PASSWORD';
+    return;
+  }
+
+  if (!firebaseReady) {
+    errEl.textContent = '// OFFLINE MODE — CREATE ACCOUNT INSTEAD';
+    return;
+  }
+
+  try {
+    errEl.textContent = '// LOGGING IN...';
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    const uid = userCredential.user.uid;
+    
+    const snap = await firestore.collection('users').doc(uid).get();
+    if (!snap.exists) {
+      errEl.textContent = '// ACCOUNT DATA NOT FOUND — CONTACT SUPPORT';
+      await auth.signOut();
+      return;
+    }
+
+    currentUser = { uid, ...snap.data() };
+    LS.set('tapstar_user', currentUser);
+    loadLobby();
+    showScreen('screen-lobby');
+
+  } catch(e) {
+    if (e.code === 'auth/user-not-found') {
+      errEl.textContent = '// NO ACCOUNT FOUND — CREATE ONE INSTEAD';
+    } else if (e.code === 'auth/wrong-password') {
+      errEl.textContent = '// INCORRECT PASSWORD';
+    } else if (e.code === 'auth/invalid-email') {
+      errEl.textContent = '// INVALID EMAIL FORMAT';
+    } else if (e.code === 'auth/too-many-requests') {
+      errEl.textContent = '// TOO MANY FAILED ATTEMPTS — TRY AGAIN LATER';
+    } else {
+      errEl.textContent = '// ERROR: ' + e.message;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
