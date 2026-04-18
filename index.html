@@ -518,6 +518,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <!-- ═══════════════════ GAME SCREEN ═══════════════════ -->
 <div id="screen-game" class="screen">
   <div class="game-screen-inner">
+    <button class="back-btn" onclick="forceCleanup()" style="margin-bottom:10px;">← EMERGENCY EXIT</button>
     <div class="score-bar">
       <div>
         <div class="section-title" id="p1label">YOU</div>
@@ -1105,7 +1106,6 @@ async function startQuickMatch() {
   document.getElementById('mmStatus').textContent = '// SCANNING FOR AVAILABLE PLAYERS...';
 
   if (!firebaseReady) {
-    // Demo: simulate finding opponent after 2 seconds
     setTimeout(() => {
       opponentName = 'DEMO_PLAYER';
       myPlayerNum  = 1;
@@ -1119,18 +1119,21 @@ async function startQuickMatch() {
   const username = currentUser.username;
   const queueRef = db.ref('matchmaking');
 
+  // ADD TIMEOUT - cancel after 30 seconds
+  const timeoutId = setTimeout(() => {
+    cancelMatchmaking();
+    showToast('No opponents found. Try again or play VS Computer.');
+  }, 30000);
+
   try {
     let matched = false;
-    let matchedRoomCode = null;
 
-    // Use transaction to safely claim an opponent from the queue
     await queueRef.transaction(queue => {
       if (!queue) {
         return { [uid]: { username, timestamp: Date.now() } };
       }
       const others = Object.keys(queue).filter(k => k !== uid);
       if (others.length > 0) {
-        // Match with the first waiting player
         const oppUid  = others[0];
         const oppData = queue[oppUid];
         matched       = { uid: oppUid, username: oppData.username };
@@ -1138,40 +1141,37 @@ async function startQuickMatch() {
         delete newQueue[oppUid];
         return newQueue;
       }
-      // Nobody waiting — add ourselves
       return { ...queue, [uid]: { username, timestamp: Date.now() } };
     });
 
     if (matched) {
-      // WE matched — we are Player 2, create the room
-      matchedRoomCode = generateRoomCode();
+      clearTimeout(timeoutId);
+      const matchedRoomCode = generateRoomCode();
       opponentName    = matched.username;
       myPlayerNum     = 2;
       stakeAmount     = QUICK_MATCH_STAKE;
       gameMode        = 30;
       await createFirebaseRoom(matchedRoomCode, matched.uid, uid, stakeAmount, gameMode);
-      // Notify P1 via their listener
       await db.ref(`player_match/${matched.uid}`).set({ roomCode: matchedRoomCode, opponent: username });
       subscribeToRoom(matchedRoomCode);
       document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
       startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
 
     } else {
-      // Waiting — listen for someone to match us
       mmQueueRef = queueRef.child(uid);
-      // Listen for match notification
-      db.ref(`player_match/${uid}`).on('value', snap => {
+      const matchListener = db.ref(`player_match/${uid}`);
+      
+      matchListener.on('value', snap => {
         if (!snap.val()) return;
+        clearTimeout(timeoutId);
         const { roomCode, opponent } = snap.val();
-        db.ref(`player_match/${uid}`).off();
-        db.ref(`player_match/${uid}`).remove();
-        // Also clean ourselves from queue
+        matchListener.off();
+        matchListener.remove();
         queueRef.child(uid).remove();
         opponentName   = opponent;
         myPlayerNum    = 1;
         stakeAmount    = QUICK_MATCH_STAKE;
         currentRoomCode = roomCode;
-        matchedRoomCode = roomCode;
         subscribeToRoom(roomCode);
         document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
         startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
@@ -1181,6 +1181,7 @@ async function startQuickMatch() {
     }
 
   } catch(e) {
+    clearTimeout(timeoutId);
     showToast('Matchmaking error: ' + e.message);
     showScreen('screen-lobby');
   }
@@ -1190,6 +1191,11 @@ async function cancelMatchmaking() {
   if (firebaseReady && currentUser) {
     db.ref(`matchmaking/${currentUser.uid}`).remove().catch(() => {});
     db.ref(`player_match/${currentUser.uid}`).off();
+    db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+  }
+  if (mmQueueRef) {
+    mmQueueRef.off();
+    mmQueueRef = null;
   }
   showScreen('screen-lobby');
 }
@@ -1314,8 +1320,13 @@ async function startRoomGame() {
 }
 
 async function leaveRoom() {
+  // Clean up listeners FIRST
+  if (roomRef) {
+    roomRef.off();
+    roomRef = null;
+  }
+  
   if (firebaseReady && currentRoomCode) {
-    db.ref(`rooms/${currentRoomCode}`).off();
     if (myPlayerNum === 1) {
       db.ref(`rooms/${currentRoomCode}`).remove().catch(() => {});
     } else {
@@ -1324,11 +1335,30 @@ async function leaveRoom() {
     }
     currentRoomCode = null;
   }
-  countdownActive = false;
-  // Reset UI
+  
+  // Reset ALL UI states
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
+  document.getElementById('joinCodeInput').value = '';
+  document.getElementById('roomStakeInput').value = '1';
+  
+  showScreen('screen-lobby');
+}
+// Emergency cleanup - call this if game freezes
+function forceCleanup() {
+  if (timerInterval) clearInterval(timerInterval);
+  if (aiInterval) clearInterval(aiInterval);
+  if (syncInterval) clearInterval(syncInterval);
+  if (roomRef) { roomRef.off(); roomRef = null; }
+  if (mmQueueRef) { mmQueueRef.off(); mmQueueRef = null; }
+  if (firebaseReady && currentUser) {
+    db.ref(`matchmaking/${currentUser.uid}`).remove().catch(() => {});
+    db.ref(`player_match/${currentUser.uid}`).off();
+    db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+  }
+  gameRunning = false;
+  currentRoomCode = null;
   showScreen('screen-lobby');
 }
 
