@@ -805,110 +805,93 @@ function showScreen(id) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  FIREBASE AUTH + ACCOUNT SYSTEM
+//  WALLET CONNECTION
 // ═══════════════════════════════════════════════════════════
-async function initApp() {
-  if (!firebaseReady) {
-    // Offline demo mode — skip to lobby with local account
-    const saved = LS.get('tapstar_user');
-    if (saved) {
-      currentUser = saved;
-      loadLobby();
-      showScreen('screen-lobby');
-    } else {
-      showScreen('screen-auth');
-    }
-    return;
+async function connectWalletAuth() {
+  walletAddress = await doConnectWallet();
+  const el = document.getElementById('authWalletStatus');
+  if (walletAddress) {
+    el.textContent = '✓ WALLET LINKED: ' + walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
+    el.classList.add('connected');
   }
-
-  auth.onAuthStateChanged(async user => {
-    if (user) {
-      // Check if this user has a profile
-      const snap = await firestore.collection('users').doc(user.uid).get();
-      if (snap.exists) {
-        currentUser = { uid: user.uid, ...snap.data() };
-        LS.set('tapstar_user', currentUser);
-        loadLobby();
-        showScreen('screen-lobby');
-      } else {
-        // New user — show auth screen
-        showScreen('screen-auth');
-      }
-    } else {
-      // Sign in anonymously
-      try {
-        await auth.signInAnonymously();
-      } catch(e) {
-        showScreen('screen-auth');
-      }
-    }
-  });
 }
 
-async function createAccount() {
-  const usernameRaw = document.getElementById('authUsername').value.trim().toUpperCase();
-  const errEl = document.getElementById('authError');
-  errEl.textContent = '';
-
-  if (usernameRaw.length < 3) {
-    errEl.textContent = '// USERNAME TOO SHORT — MINIMUM 3 CHARACTERS';
-    return;
+async function connectWalletLobby() {
+  walletAddress = await doConnectWallet();
+  if (walletAddress) {
+    updateLobbyWalletUI();
+    if (currentUser && firebaseReady) {
+      firestore.collection('users').doc(currentUser.uid).update({ walletAddress }).catch(() => {});
+    }
+    if (currentUser) currentUser.walletAddress = walletAddress;
   }
-  if (!/^[A-Z0-9_]+$/.test(usernameRaw)) {
-    errEl.textContent = '// INVALID CHARACTERS — LETTERS, NUMBERS, UNDERSCORE ONLY';
-    return;
-  }
+}
 
-  const username = usernameRaw;
+async function doConnectWallet() {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (!firebaseReady) {
-    // Offline mode
-    currentUser = { uid: 'local_' + Date.now(), username, walletAddress: walletAddress || null };
-    LS.set('tapstar_user', currentUser);
-    loadLobby();
-    showScreen('screen-lobby');
-    return;
+  if (!window.ethereum) {
+    if (isMobile) {
+      const deepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      showToast('📲 Open this page in MetaMask browser to connect');
+      setTimeout(() => {
+        if (confirm('Open in MetaMask browser?')) window.location.href = deepLink;
+      }, 300);
+    } else {
+      showToast('MetaMask not found — install at metamask.io');
+    }
+    return null;
   }
 
   try {
-    errEl.textContent = '// CHECKING USERNAME...';
-    // Check uniqueness
-    const snap = await firestore.collection('usernames').doc(username.toLowerCase()).get();
-    if (snap.exists) {
-      errEl.textContent = '// USERNAME TAKEN — CHOOSE ANOTHER';
-      return;
-    }
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) { showToast('No accounts found'); return null; }
+    const addr = accounts[0];
 
-    errEl.textContent = '// CREATING ACCOUNT...';
-    const uid = auth.currentUser?.uid;
-    if (!uid) {
-      errEl.textContent = '// AUTH ERROR — REFRESH AND TRY AGAIN';
-      return;
-    }
+    window.ethereum.request({ method: 'eth_chainId' }).then(chainId => {
+      if (chainId !== POLYGON_CHAIN_ID && chainId !== POLYGON_TESTNET_ID) {
+        document.getElementById('networkWarn')?.classList.add('show');
+        window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: POLYGON_CHAIN_ID }]
+        }).then(() => {
+          document.getElementById('networkWarn')?.classList.remove('show');
+        }).catch(() => {});
+      }
+    }).catch(() => {});
 
-    // Write atomically
-    const batch = firestore.batch();
-    batch.set(firestore.collection('users').doc(uid), {
-      username,
-      walletAddress: walletAddress || null,
-      wins: 0, losses: 0, pvpWins: 0, totalPolWon: 0,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    batch.set(firestore.collection('usernames').doc(username.toLowerCase()), { uid });
-    await batch.commit();
+    window.ethereum.request({ method: 'eth_getBalance', params: [addr, 'latest'] }).then(hex => {
+      walletBalance = parseInt(hex, 16) / 1e18;
+      updateLobbyWalletUI();
+    }).catch(() => {});
 
-    currentUser = { uid, username, walletAddress: walletAddress || null };
-    LS.set('tapstar_user', currentUser);
-    loadLobby();
-    showScreen('screen-lobby');
+    window.ethereum.on('accountsChanged', a => { walletAddress = a[0]; updateLobbyWalletUI(); });
+    window.ethereum.on('chainChanged', () => window.location.reload());
 
-  } catch(e) {
-    errEl.textContent = '// ERROR: ' + e.message;
+    return addr;
+
+  } catch(err) {
+    if (err.code === 4001) { showToast('Wallet connection rejected'); }
+    else { showToast('Wallet error: ' + (err.message || 'unknown')); }
+    return null;
   }
 }
 
+function updateLobbyWalletUI() {
+  if (!walletAddress) return;
+  const short = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
+  const btn = document.getElementById('lobbyWalletBtn');
+  const addrEl = document.getElementById('lobbyWalletAddr');
+  const balEl = document.getElementById('lobbyWalletBal');
+  const inlineBtn = document.getElementById('lobbyWalletInline');
+  if (btn) { btn.textContent = '[ '+short+' ]'; btn.classList.add('connected'); }
+  if (addrEl) addrEl.textContent = short;
+  if (balEl) balEl.textContent = walletBalance.toFixed(4) + ' POL';
+  if (inlineBtn) inlineBtn.style.display = 'none';
+}
+
 // ═══════════════════════════════════════════════════════════
-//  WALLET CONNECTION
+//  AUTH CONNECTION
 // ═══════════════════════════════════════════════════════════
 async function initApp() {
   if (!firebaseReady) {
