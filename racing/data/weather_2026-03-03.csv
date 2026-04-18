@@ -1,0 +1,6 @@
+date,course,latitude,longitude,temperature_max_c,temperature_min_c,rainfall_mm,wind_speed_max_kmh,wind_direction_deg,avg_humidity_pct,weather_code,coords_found,rainfall_last_7days_mm
+2026-03-03,LEOPARDSTOWN                                                    (IRE),53.2884,-6.1726,9.3,3.4,0.0,13.0,90.0,70.8,3.0,True,11.5
+2026-03-03,MARKET RASEN                                                                            - ABANDONED,,,,,,,,,,False,
+2026-03-03,CHANTILLY                                                    (FR),,,,,,,,,,False,
+2026-03-03,NEWCASTLE,54.9867,-1.6167,10.7,1.9,0.0,15.8,230.0,66.8,3.0,True,4.4
+2026-03-03,WOLVERHAMPTON (AW),52.5882,-2.1403,11.0,6.7,1.0,14.4,75.0,77.0,51.0,True,27.6

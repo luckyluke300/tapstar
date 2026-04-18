@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAPSTAR CHAIN</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+:root{--p1:#00ffcc;--p2:#ff3366;--bg:#040810;--panel:#080f1a;--border:#1a2a3a;--gold:#ffd700;--dim:#1a2535;--text:#c8d8e8;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(0,255,204,.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(255,51,102,.03) 0%,transparent 60%);}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999;}
+#app{max-width:900px;margin:0 auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;gap:16px;}
+
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;gap:10px;}
+.logo{font-family:'Orbitron',monospace;font-weight:900;font-size:1.8rem;letter-spacing:4px;background:linear-gradient(90deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 20px rgba(0,255,204,.3));}
+.logo span{-webkit-text-fill-color:var(--gold);}
+.header-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.hbtn{background:transparent;border:1px solid var(--p1);color:var(--p1);padding:7px 13px;font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.hbtn:hover{background:rgba(0,255,204,.1);}
+.hbtn.gold{border-color:var(--gold);color:var(--gold);}
+.hbtn.gold:hover{background:rgba(255,215,0,.1);}
+.hbtn.connected{border-color:var(--gold);color:var(--gold);}
+.network-warn{background:rgba(255,51,102,.1);border:1px solid var(--p2);padding:10px 16px;font-size:.75rem;display:none;color:var(--p2);}
+.network-warn.show{display:block;}
+
+/* LOBBY TABS */
+#lobby{display:flex;flex-direction:column;gap:16px;flex:1;}
+.lobby-tabs{display:flex;border-bottom:1px solid var(--border);}
+.lobby-tab{flex:1;padding:12px;background:transparent;border:none;border-bottom:2px solid transparent;color:#4a6a8a;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:-1px;}
+.lobby-tab:hover{color:var(--text);}
+.lobby-tab.active{color:var(--p1);border-bottom-color:var(--p1);}
+.lobby-tab.pc-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-panel{display:none;flex-direction:column;gap:16px;}
+.tab-panel.active{display:flex;}
+
+/* PANELS */
+.section-title{font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:4px;color:#4a6a8a;text-transform:uppercase;margin-bottom:6px;}
+.panel{background:var(--panel);border:1px solid var(--border);padding:20px;}
+
+/* STAKE */
+.stake-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.stake-input-wrap{display:flex;align-items:center;border:1px solid var(--border);flex:1;min-width:180px;}
+.stake-input-wrap input{background:transparent;border:none;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:1rem;padding:10px 14px;flex:1;outline:none;}
+.stake-unit{padding:10px 14px;color:var(--gold);font-size:.8rem;letter-spacing:2px;border-left:1px solid var(--border);}
+.preset-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.preset-btn{background:transparent;border:1px solid var(--dim);color:#4a6a8a;padding:6px 12px;font-family:'Share Tech Mono',monospace;font-size:.75rem;cursor:pointer;transition:all .15s;letter-spacing:1px;}
+.preset-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* MODE CARDS */
+.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.mode-card{border:1px solid var(--border);padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.mode-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 60%,rgba(0,255,204,.05));opacity:0;transition:opacity .2s;}
+.mode-card:hover::before{opacity:1;}
+.mode-card.selected{border-color:var(--p1);}
+.mode-card.selected::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--p1);font-size:.8rem;}
+.mode-icon{font-size:1.4rem;margin-bottom:6px;}
+.mode-name{font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:2px;color:var(--p1);}
+.mode-desc{font-size:.6rem;color:#4a6a8a;margin-top:4px;line-height:1.4;}
+.mode-time{font-size:.7rem;color:var(--gold);margin-top:6px;}
+
+/* DIFF CARDS */
+.diff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.diff-card{border:1px solid var(--border);padding:14px 10px;cursor:pointer;transition:all .2s;position:relative;text-align:center;}
+.diff-card:hover{border-color:var(--gold);}
+.diff-card.selected{border-color:var(--gold);background:rgba(255,215,0,.05);}
+.diff-card.selected::after{content:'✓';position:absolute;top:6px;right:8px;color:var(--gold);font-size:.7rem;}
+.diff-icon{font-size:1.4rem;margin-bottom:6px;}
+.diff-name{font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:2px;color:var(--gold);}
+.diff-desc{font-size:.6rem;color:#4a6a8a;margin-top:4px;line-height:1.4;}
+.free-badge{display:inline-block;background:rgba(0,255,204,.1);border:1px solid var(--p1);color:var(--p1);font-size:.6rem;letter-spacing:2px;padding:3px 10px;margin-bottom:8px;}
+
+/* CONTRACT PANEL */
+.contract-panel{background:var(--panel);border:1px solid var(--border);padding:16px;}
+.contract-row{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(26,42,58,.5);font-size:.72rem;gap:10px;}
+.contract-row:last-child{border-bottom:none;}
+.contract-key{color:#4a6a8a;letter-spacing:1px;white-space:nowrap;}
+.contract-val{color:var(--p1);font-size:.65rem;word-break:break-all;text-align:right;}
+.contract-val.gold{color:var(--gold);}
+.status-log{font-size:.65rem;color:#4a6a8a;letter-spacing:1px;min-height:18px;}
+.status-log.active{color:var(--p1);}
+.status-log.error{color:var(--p2);}
+.status-log.success{color:var(--gold);}
+
+/* BATTLE BTNS */
+.battle-btn{background:linear-gradient(135deg,rgba(0,255,204,.15),rgba(255,51,102,.15));border:1px solid var(--p1);color:#fff;font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;letter-spacing:4px;padding:18px;cursor:pointer;width:100%;transition:all .2s;text-transform:uppercase;position:relative;overflow:hidden;}
+.battle-btn::before{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(0,255,204,.1);border-radius:50%;transform:translate(-50%,-50%);transition:width .4s,height .4s;}
+.battle-btn:hover::before{width:500px;height:500px;}
+.battle-btn:hover{box-shadow:0 0 40px rgba(0,255,204,.3);}
+.battle-btn:disabled{opacity:.4;cursor:not-allowed;}
+.pc-battle-btn{background:linear-gradient(135deg,rgba(255,215,0,.12),rgba(255,51,102,.08));border:1px solid var(--gold);color:#fff;font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;letter-spacing:4px;padding:18px;cursor:pointer;width:100%;transition:all .2s;text-transform:uppercase;}
+.pc-battle-btn:hover{box-shadow:0 0 40px rgba(255,215,0,.3);}
+
+/* GAME SCREEN */
+#game-screen{display:none;flex-direction:column;gap:12px;flex:1;}
+#game-screen.show{display:flex;}
+.score-bar{display:flex;justify-content:space-between;align-items:center;}
+.player-score{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;}
+.player-score.p1{color:var(--p1);text-shadow:0 0 20px rgba(0,255,204,.5);}
+.player-score.p2{color:var(--p2);text-shadow:0 0 20px rgba(255,51,102,.5);}
+.timer-wrap{text-align:center;}
+.timer{font-family:'Orbitron',monospace;font-size:2.5rem;font-weight:900;color:#fff;transition:color .3s;}
+.timer.urgent{color:var(--p2);animation:pulse .5s infinite;}
+.timer-label{font-size:.6rem;letter-spacing:3px;color:#4a6a8a;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.stake-info-bar{display:flex;justify-content:center;gap:24px;background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.2);padding:8px 20px;flex-wrap:wrap;}
+.stake-info-item{font-size:.72rem;letter-spacing:1px;}
+.stake-info-item span{color:var(--gold);}
+.territory-bar{height:8px;background:var(--p2);overflow:hidden;border:1px solid var(--border);}
+.territory-fill{height:100%;background:var(--p1);transition:width .1s ease;box-shadow:4px 0 10px rgba(0,255,204,.5);}
+.combo-wrap{display:flex;justify-content:space-between;font-size:.65rem;}
+.combo{letter-spacing:2px;transition:color .2s;}
+.combo.p1{color:var(--p1);}
+.combo.p2{color:var(--p2);}
+.combo.hot{font-weight:bold;animation:pulse .3s infinite;}
+.pc-indicator{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);padding:6px 14px;font-size:.65rem;letter-spacing:2px;color:var(--gold);text-align:center;display:none;}
+.pc-indicator.show{display:block;}
+
+/* ARENA + CELLS */
+#arena{display:grid;width:100%;gap:2px;user-select:none;-webkit-user-select:none;}
+.cell{aspect-ratio:1;border-radius:2px;cursor:pointer;transition:transform .08s;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cell::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.15);opacity:0;transition:opacity .1s;}
+.cell:active::after{opacity:1;}
+.cell:active{transform:scale(.92);}
+.cell.neutral{background:var(--dim);}
+.cell.p1{background:var(--p1);}
+.cell.p2{background:var(--p2);}
+.cell.flash-p1{animation:flashP1 .2s;}
+.cell.flash-p2{animation:flashP2 .2s;}
+@keyframes flashP1{0%,100%{background:var(--p1)}50%{background:#fff}}
+@keyframes flashP2{0%,100%{background:var(--p2)}50%{background:#fff}}
+/* Medal inside cell */
+.cell-medal{position:absolute;font-size:.55rem;line-height:1;pointer-events:none;z-index:2;filter:drop-shadow(0 0 2px rgba(0,0,0,.6));}
+/* Power cell */
+.cell.power .cell-power-icon{position:absolute;font-size:.6rem;z-index:3;animation:spinPow 1s linear infinite;}
+@keyframes spinPow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* TAP BUTTONS */
+.tap-area{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tap-btn{padding:20px;font-family:'Orbitron',monospace;font-weight:900;font-size:1.1rem;letter-spacing:3px;border:none;cursor:pointer;transition:all .08s;text-transform:uppercase;position:relative;overflow:hidden;}
+.tap-btn:active{transform:scale(.96);}
+.tap-btn.p1{background:var(--p1);color:#040810;box-shadow:0 0 30px rgba(0,255,204,.3);}
+.tap-btn.p1:active{box-shadow:0 0 60px rgba(0,255,204,.6);}
+.tap-btn.p2{background:var(--p2);color:#fff;box-shadow:0 0 30px rgba(255,51,102,.3);}
+.tap-btn.p2:active{box-shadow:0 0 60px rgba(255,51,102,.6);}
+.tap-count{display:block;font-size:.55rem;letter-spacing:2px;opacity:.7;margin-top:4px;font-weight:400;}
+.tap-medal-badge{position:absolute;top:6px;right:8px;font-size:1rem;line-height:1;}
+
+/* RESULT OVERLAY */
+#result-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.94);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:18px;text-align:center;padding:20px;overflow-y:auto;}
+#result-overlay.show{display:flex;}
+.result-title{font-family:'Orbitron',monospace;font-size:2.8rem;font-weight:900;animation:resultPop .5s cubic-bezier(.34,1.56,.64,1);}
+.result-title.p1-win{color:var(--p1);text-shadow:0 0 40px rgba(0,255,204,.8);}
+.result-title.p2-win{color:var(--p2);text-shadow:0 0 40px rgba(255,51,102,.8);}
+.result-title.draw{color:var(--gold);}
+@keyframes resultPop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.result-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;width:100%;max-width:480px;}
+.result-stat{border:1px solid var(--border);padding:14px;background:var(--panel);}
+.result-stat-val{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;}
+.result-stat-label{font-size:.6rem;letter-spacing:2px;color:#4a6a8a;margin-top:4px;}
+.payout-box{background:rgba(255,215,0,.05);border:1px solid var(--gold);padding:16px 36px;}
+.payout-amount{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--gold);}
+.payout-label{font-size:.62rem;letter-spacing:3px;color:#4a6a8a;margin-top:4px;}
+.blockchain-note{font-size:.65rem;color:#4a6a8a;max-width:420px;line-height:1.6;letter-spacing:1px;}
+/* Achievement unlock popup */
+.unlock-box{background:rgba(0,255,204,.05);border:1px solid var(--p1);padding:14px 24px;max-width:420px;}
+.unlock-title{font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:3px;color:var(--p1);margin-bottom:8px;}
+.unlock-medals{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.unlock-medal{text-align:center;font-size:1.6rem;}
+.unlock-medal-name{font-size:.55rem;color:#4a6a8a;margin-top:2px;letter-spacing:1px;}
+.result-btns{display:flex;gap:12px;}
+.result-btn{padding:12px 24px;font-family:'Share Tech Mono',monospace;font-size:.85rem;letter-spacing:2px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.result-btn.primary{background:var(--p1);border:none;color:#040810;font-weight:bold;}
+.result-btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+.result-btn:hover{opacity:.8;}
+
+/* LEADERBOARD OVERLAY */
+#lb-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.97);z-index:200;flex-direction:column;padding:24px 20px;overflow-y:auto;}
+#lb-overlay.show{display:flex;}
+.lb-inner{max-width:700px;width:100%;margin:0 auto;}
+.lb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.lb-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;letter-spacing:4px;color:var(--gold);}
+.lb-close{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 16px;font-family:'Share Tech Mono',monospace;font-size:.75rem;cursor:pointer;letter-spacing:2px;}
+.lb-close:hover{border-color:var(--p2);color:var(--p2);}
+.lb-name-row{display:flex;gap:10px;margin-bottom:16px;align-items:center;}
+.lb-name-input{background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:.9rem;padding:10px 14px;flex:1;outline:none;letter-spacing:2px;}
+.lb-name-input:focus{border-color:var(--p1);}
+.lb-save-btn{background:var(--p1);border:none;color:#040810;font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:2px;padding:10px 18px;cursor:pointer;font-weight:bold;}
+.lb-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.lb-tab{flex:1;padding:10px;background:transparent;border:none;border-bottom:2px solid transparent;color:#4a6a8a;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:-1px;}
+.lb-tab:hover{color:var(--text);}
+.lb-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.lb-table{width:100%;border-collapse:collapse;}
+.lb-table th{font-family:'Orbitron',monospace;font-size:.55rem;letter-spacing:3px;color:#4a6a8a;text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);}
+.lb-table td{font-size:.75rem;padding:10px 12px;border-bottom:1px solid rgba(26,42,58,.4);letter-spacing:1px;}
+.lb-table tr:hover td{background:rgba(0,255,204,.03);}
+.lb-rank{font-family:'Orbitron',monospace;font-weight:700;}
+.lb-rank.gold{color:var(--gold);}
+.lb-rank.silver{color:#aaa;}
+.lb-rank.bronze{color:#cd7f32;}
+.lb-player{color:var(--p1);font-weight:bold;}
+.lb-wins{color:#fff;font-family:'Orbitron',monospace;}
+.lb-pol{color:var(--gold);}
+.lb-empty{text-align:center;padding:40px;color:#4a6a8a;font-size:.75rem;letter-spacing:2px;line-height:2;}
+
+/* ═══════════════════════════════════════
+   MEDAL STORE OVERLAY
+═══════════════════════════════════════ */
+#store-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.97);z-index:300;flex-direction:column;padding:20px;overflow-y:auto;}
+#store-overlay.show{display:flex;}
+.store-inner{max-width:860px;width:100%;margin:0 auto;}
+.store-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.store-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;letter-spacing:4px;color:var(--gold);}
+.store-subtitle{font-size:.65rem;color:#4a6a8a;letter-spacing:2px;margin-bottom:20px;}
+
+/* equipped banner */
+.equipped-banner{background:rgba(0,255,204,.05);border:1px solid var(--p1);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.equipped-preview{font-size:2rem;}
+.equipped-info{flex:1;}
+.equipped-name{font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:2px;color:var(--p1);}
+.equipped-sub{font-size:.62rem;color:#4a6a8a;margin-top:3px;letter-spacing:1px;}
+.unequip-btn{background:transparent;border:1px solid var(--border);color:#4a6a8a;padding:6px 14px;font-family:'Share Tech Mono',monospace;font-size:.7rem;cursor:pointer;letter-spacing:1px;}
+.unequip-btn:hover{border-color:var(--p2);color:var(--p2);}
+
+/* store tabs */
+.store-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.store-tab{flex:1;padding:10px;background:transparent;border:none;border-bottom:2px solid transparent;color:#4a6a8a;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:-1px;}
+.store-tab:hover{color:var(--text);}
+.store-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* medal grid */
+.medal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;}
+.medal-card{background:var(--panel);border:1px solid var(--border);padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.medal-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+.medal-card.owned{border-color:var(--p1);}
+.medal-card.equipped{border-color:var(--gold);background:rgba(255,215,0,.07);}
+.medal-card.locked{opacity:.55;cursor:default;}
+.medal-card.locked:hover{transform:none;border-color:var(--border);}
+.medal-emoji{font-size:2.4rem;margin-bottom:8px;line-height:1;display:block;}
+.medal-name{font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:2px;color:var(--text);margin-bottom:4px;}
+.medal-desc{font-size:.58rem;color:#4a6a8a;line-height:1.4;margin-bottom:10px;}
+.medal-price{font-family:'Orbitron',monospace;font-size:.7rem;color:var(--gold);font-weight:700;}
+.medal-price.free{color:var(--p1);}
+.medal-price.locked{color:#4a6a8a;}
+.medal-badge{position:absolute;top:6px;right:6px;font-size:.55rem;letter-spacing:1px;padding:2px 6px;}
+.medal-badge.owned{background:rgba(0,255,204,.15);color:var(--p1);border:1px solid var(--p1);}
+.medal-badge.equipped{background:rgba(255,215,0,.2);color:var(--gold);border:1px solid var(--gold);}
+.medal-badge.locked-badge{background:rgba(74,106,138,.2);color:#4a6a8a;border:1px solid #4a6a8a;}
+.medal-action{margin-top:8px;}
+.medal-btn{width:100%;padding:7px;font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:1px;cursor:pointer;transition:all .2s;border:none;text-transform:uppercase;}
+.medal-btn.buy{background:var(--gold);color:#040810;font-weight:bold;}
+.medal-btn.buy:hover{opacity:.85;}
+.medal-btn.equip{background:var(--p1);color:#040810;font-weight:bold;}
+.medal-btn.equip:hover{opacity:.85;}
+.medal-btn.equipped-btn{background:rgba(255,215,0,.15);color:var(--gold);border:1px solid var(--gold);}
+.medal-btn.locked-btn{background:rgba(26,42,58,.5);color:#4a6a8a;cursor:not-allowed;}
+.medal-progress{margin-top:6px;font-size:.58rem;color:#4a6a8a;letter-spacing:1px;}
+.medal-progress-bar{height:3px;background:var(--dim);margin-top:4px;border-radius:2px;overflow:hidden;}
+.medal-progress-fill{height:100%;background:var(--p1);transition:width .3s;}
+
+/* notification toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--p1);color:var(--p1);padding:12px 24px;font-family:'Share Tech Mono',monospace;font-size:.8rem;letter-spacing:2px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:320px;}
+.toast.show{opacity:1;}
+
+@media(max-width:600px){
+  .logo{font-size:1.2rem;letter-spacing:2px;}
+  .mode-grid{grid-template-columns:1fr;}
+  .diff-grid{grid-template-columns:repeat(2,1fr);}
+  .timer{font-size:1.8rem;}
+  .player-score{font-size:1.4rem;}
+  .result-title{font-size:1.8rem;}
+  .result-stats{grid-template-columns:1fr;}
+  .tap-btn{padding:16px;font-size:.9rem;}
+  .lb-title,.store-title{font-size:1rem;}
+  .medal-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">TAP<span>★</span>CHAIN</div>
+  <div class="header-btns">
+    <button class="hbtn gold" onclick="openStore()">🏅 MEDALS</button>
+    <button class="hbtn gold" onclick="openLeaderboard()">🏆 BOARD</button>
+    <button class="hbtn" id="walletBtn" onclick="connectWallet()">[ CONNECT ]</button>
+  </div>
+</div>
+
+<div class="network-warn" id="networkWarn">⚠ WRONG NETWORK — SWITCH TO POLYGON IN METAMASK</div>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div class="lobby-tabs">
+    <button class="lobby-tab active" id="tabPvP" onclick="switchTab('pvp')">⚔ PLAYER VS PLAYER</button>
+    <button class="lobby-tab pc-tab" id="tabPC" onclick="switchTab('pc')">🤖 VS COMPUTER</button>
+  </div>
+
+  <!-- PVP TAB -->
+  <div class="tab-panel active" id="panelPvP">
+    <div class="panel">
+      <div class="section-title">// STAKE AMOUNT</div>
+      <div class="stake-row">
+        <div class="stake-input-wrap">
+          <input type="number" id="stakeInput" value="0.1" min="0.01" step="0.01">
+          <div class="stake-unit">POL</div>
+        </div>
+        <div class="preset-btns">
+          <button class="preset-btn" onclick="setStake(.1)">0.1</button>
+          <button class="preset-btn" onclick="setStake(.5)">0.5</button>
+          <button class="preset-btn" onclick="setStake(1)">1.0</button>
+          <button class="preset-btn" onclick="setStake(5)">5.0</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title">// SELECT MODE</div>
+      <div class="mode-grid" id="pvpModes">
+        <div class="mode-card selected" onclick="selectMode(this,15,'pvp')"><div class="mode-icon">⚡</div><div class="mode-name">BLITZ</div><div class="mode-desc">Pure speed. No mercy.</div><div class="mode-time">15 SEC</div></div>
+        <div class="mode-card" onclick="selectMode(this,30,'pvp')"><div class="mode-icon">⚔️</div><div class="mode-name">DUEL</div><div class="mode-desc">Standard arena battle.</div><div class="mode-time">30 SEC</div></div>
+        <div class="mode-card" onclick="selectMode(this,60,'pvp')"><div class="mode-icon">🔥</div><div class="mode-name">WAR</div><div class="mode-desc">Epic territory control.</div><div class="mode-time">60 SEC</div></div>
+      </div>
+    </div>
+    <div class="contract-panel">
+      <div class="section-title">// BLOCKCHAIN STATUS</div>
+      <div class="contract-row"><span class="contract-key">NETWORK</span><span class="contract-val" id="networkStatus">POLYGON (POL)</span></div>
+      <div class="contract-row"><span class="contract-key">FEE WALLET</span><span class="contract-val gold" id="feeWalletDisplay">NOT SET</span></div>
+      <div class="contract-row"><span class="contract-key">YOUR WALLET</span><span class="contract-val" id="walletAddr">NOT CONNECTED</span></div>
+      <div class="contract-row"><span class="contract-key">BALANCE</span><span class="contract-val" id="walletBalance">— POL</span></div>
+      <div class="contract-row"><span class="contract-key">WINNER GETS</span><span class="contract-val gold" id="winnerGets">—</span></div>
+      <div class="contract-row"><span class="contract-key">PROTOCOL FEE (5%)</span><span class="contract-val gold" id="protocolFeeDisplay">—</span></div>
+    </div>
+    <div class="status-log" id="statusLog">// CONNECT WALLET TO BEGIN</div>
+    <button class="battle-btn" id="battleBtn" onclick="startBattle(false)" disabled>⚔ ENTER ARENA ⚔</button>
+  </div>
+
+  <!-- VS PC TAB -->
+  <div class="tab-panel" id="panelPC">
+    <div class="panel" style="text-align:center;padding:14px 20px 10px">
+      <span class="free-badge">✦ FREE TO PLAY — NO WALLET NEEDED ✦</span>
+      <div class="section-title" style="margin-bottom:0">PRACTICE BEFORE STAKING REAL POL</div>
+    </div>
+    <div class="panel">
+      <div class="section-title">// SELECT DIFFICULTY</div>
+      <div class="diff-grid">
+        <div class="diff-card selected" onclick="selectDiff(this,'easy')"><div class="diff-icon">🟢</div><div class="diff-name">EASY</div><div class="diff-desc">Slow AI. Learn the game.</div></div>
+        <div class="diff-card" onclick="selectDiff(this,'medium')"><div class="diff-icon">🟡</div><div class="diff-name">MEDIUM</div><div class="diff-desc">Balanced. Real challenge.</div></div>
+        <div class="diff-card" onclick="selectDiff(this,'hard')"><div class="diff-icon">🔴</div><div class="diff-name">HARD</div><div class="diff-desc">Fast & aggressive steals.</div></div>
+        <div class="diff-card" onclick="selectDiff(this,'insane')"><div class="diff-icon">💀</div><div class="diff-name">INSANE</div><div class="diff-desc">Max speed. Near impossible.</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-title">// SELECT MODE</div>
+      <div class="mode-grid" id="pcModes">
+        <div class="mode-card selected" onclick="selectMode(this,15,'pc')"><div class="mode-icon">⚡</div><div class="mode-name">BLITZ</div><div class="mode-desc">Pure speed.</div><div class="mode-time">15 SEC</div></div>
+        <div class="mode-card" onclick="selectMode(this,30,'pc')"><div class="mode-icon">⚔️</div><div class="mode-name">DUEL</div><div class="mode-desc">Standard battle.</div><div class="mode-time">30 SEC</div></div>
+        <div class="mode-card" onclick="selectMode(this,60,'pc')"><div class="mode-icon">🔥</div><div class="mode-name">WAR</div><div class="mode-desc">Full territory war.</div><div class="mode-time">60 SEC</div></div>
+      </div>
+    </div>
+    <button class="pc-battle-btn" onclick="startBattle(true)">🤖 CHALLENGE THE MACHINE</button>
+  </div>
+</div><!-- /lobby -->
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+  <div class="score-bar">
+    <div>
+      <div class="section-title" id="p1label">PLAYER 1</div>
+      <div class="player-score p1" id="score1">0</div>
+    </div>
+    <div class="timer-wrap">
+      <div class="timer" id="timer">15</div>
+      <div class="timer-label">SECONDS</div>
+    </div>
+    <div style="text-align:right">
+      <div class="section-title" id="p2label">PLAYER 2</div>
+      <div class="player-score p2" id="score2">0</div>
+    </div>
+  </div>
+  <div class="stake-info-bar">
+    <div class="stake-info-item">STAKED: <span id="displayStake">0.1</span> POL EACH</div>
+    <div class="stake-info-item">POT: <span id="displayPot">0.2</span> POL</div>
+    <div class="stake-info-item">MODE: <span id="displayMode">BLITZ</span></div>
+  </div>
+  <div class="territory-bar"><div class="territory-fill" id="territoryFill" style="width:50%"></div></div>
+  <div class="combo-wrap">
+    <div class="combo p1" id="combo1">P1 COMBO x1</div>
+    <div class="combo p2" id="combo2">P2 COMBO x1</div>
+  </div>
+  <div class="pc-indicator" id="pcIndicator">🤖 VS COMPUTER — <span id="diffLabel">EASY</span> — FREE PLAY</div>
+  <div id="arena"></div>
+  <div class="tap-area">
+    <button class="tap-btn p1" id="tapBtn1" ontouchstart="tap(1,event)" onclick="tap(1,null)">
+      <span class="tap-medal-badge" id="medalBadge1"></span>
+      TAP!<span class="tap-count" id="tapCount1">0 TAPS</span>
+    </button>
+    <button class="tap-btn p2" id="tapBtn2" ontouchstart="tap(2,event)" onclick="tap(2,null)">
+      <span class="tap-medal-badge" id="medalBadge2"></span>
+      TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>
+    </button>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- RESULT OVERLAY -->
+<div id="result-overlay">
+  <div class="result-title" id="resultTitle">PLAYER 1 WINS!</div>
+  <div class="result-stats">
+    <div class="result-stat"><div class="result-stat-val" id="finalScore1" style="color:var(--p1)">0</div><div class="result-stat-label">P1 CELLS</div></div>
+    <div class="result-stat"><div class="result-stat-val" id="finalPct" style="color:var(--text)">50%</div><div class="result-stat-label">TERRITORY</div></div>
+    <div class="result-stat"><div class="result-stat-val" id="finalScore2" style="color:var(--p2)">0</div><div class="result-stat-label">P2 CELLS</div></div>
+  </div>
+  <div class="payout-box">
+    <div class="payout-amount" id="payoutAmount">+0.19 POL</div>
+    <div class="payout-label" id="payoutLabel">WINNER PAYOUT</div>
+  </div>
+  <div class="unlock-box" id="unlockBox" style="display:none">
+    <div class="unlock-title">🏅 NEW MEDALS UNLOCKED!</div>
+    <div class="unlock-medals" id="unlockMedals"></div>
+  </div>
+  <div class="blockchain-note" id="blockchainNote"></div>
+  <div class="result-btns">
+    <button class="result-btn primary" onclick="rematch()">REMATCH</button>
+    <button class="result-btn secondary" onclick="backToLobby()">LOBBY</button>
+  </div>
+</div>
+
+<!-- LEADERBOARD OVERLAY -->
+<div id="lb-overlay">
+  <div class="lb-inner">
+    <div class="lb-header">
+      <div class="lb-title">🏆 LEADERBOARD</div>
+      <button class="lb-close" onclick="closeLeaderboard()">[ CLOSE ]</button>
+    </div>
+    <div class="lb-name-row">
+      <input class="lb-name-input" id="lbNameInput" maxlength="16" placeholder="SET YOUR PLAYER TAG (e.g. GREG_KE)"/>
+      <button class="lb-save-btn" id="lbSaveBtn" onclick="savePlayerName()">SAVE TAG</button>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" onclick="showLbPeriod('daily',this)">DAILY</button>
+      <button class="lb-tab" onclick="showLbPeriod('weekly',this)">WEEKLY</button>
+      <button class="lb-tab" onclick="showLbPeriod('monthly',this)">MONTHLY</button>
+      <button class="lb-tab" onclick="showLbPeriod('alltime',this)">ALL TIME</button>
+    </div>
+    <div id="lbContent"></div>
+  </div>
+</div>
+
+<!-- MEDAL STORE OVERLAY -->
+<div id="store-overlay">
+  <div class="store-inner">
+    <div class="store-header">
+      <div class="store-title">🏅 MEDAL STORE</div>
+      <button class="lb-close" onclick="closeStore()">[ CLOSE ]</button>
+    </div>
+    <div class="store-subtitle">// MEDALS APPEAR INSIDE YOUR CELLS DURING BATTLE — YOUR MARK ON THE ARENA</div>
+
+    <div class="equipped-banner" id="equippedBanner">
+      <div class="equipped-preview" id="equippedPreview">—</div>
+      <div class="equipped-info">
+        <div class="equipped-name" id="equippedName">NO MEDAL EQUIPPED</div>
+        <div class="equipped-sub" id="equippedSub">Select a medal below to display it in your cells</div>
+      </div>
+      <button class="unequip-btn" onclick="unequipMedal()">UNEQUIP</button>
+    </div>
+
+    <div class="store-tabs">
+      <button class="store-tab active" onclick="showStoreTab('premium',this)">💎 PREMIUM</button>
+      <button class="store-tab" onclick="showStoreTab('achievements',this)">🏆 ACHIEVEMENTS</button>
+      <button class="store-tab" onclick="showStoreTab('collection',this)">🎒 MY COLLECTION</button>
+    </div>
+
+    <div id="storeContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  TAPSTAR CHAIN  v3.0  —  NFT Medal System
+// ═══════════════════════════════════════════════════════════
+
+// ── CONFIG ──────────────────────────────────────────────────
+const CONTRACT_ADDRESS    = "";
+const PROTOCOL_FEE_WALLET = "0xE41D14199e74F46CaF82dF8Df4966Fe15985Eb9E";
+const PROTOCOL_FEE        = 0.05;
+const POLYGON_CHAIN_ID    = "0x89";
+const POLYGON_TESTNET_ID  = "0x13882";
+const GRID_SIZE           = 12;
+
+// ── AI CONFIG ───────────────────────────────────────────────
+const AI_CONFIG = {
+  easy:   { interval: 850,  stealChance: 0.15, comboChance: 0.10, comboMax: 2 },
+  medium: { interval: 450,  stealChance: 0.40, comboChance: 0.35, comboMax: 3 },
+  hard:   { interval: 180,  stealChance: 0.68, comboChance: 0.60, comboMax: 4 },
+  insane: { interval: 55,   stealChance: 0.88, comboChance: 0.85, comboMax: 5 },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  MEDAL CATALOGUE
+//  type: 'premium' (POL purchase) | 'achievement' (free, milestone)
+//  For achievements, `condition` is a function(stats) => bool
+// ═══════════════════════════════════════════════════════════
+const ALL_MEDALS = [
+
+  // ── PREMIUM STORE MEDALS (50–100 POL) ──────────────────
+  { id:'crown',     emoji:'👑', name:'THE CROWN',      desc:'Royalty of the arena.',           type:'premium', price:100 },
+  { id:'diamond',   emoji:'💎', name:'DIAMOND',         desc:'Rarest gem in the game.',         type:'premium', price:100 },
+  { id:'fire',      emoji:'🔥', name:'INFERNO',         desc:'Set the board ablaze.',           type:'premium', price:75  },
+  { id:'lightning', emoji:'⚡', name:'LIGHTNING GOD',   desc:'Strike like thunder.',            type:'premium', price:75  },
+  { id:'skull',     emoji:'💀', name:'SKULL KING',      desc:'Death comes to your cells.',      type:'premium', price:75  },
+  { id:'alien',     emoji:'👾', name:'ALIEN FORCE',     desc:'Not from this world.',            type:'premium', price:60  },
+  { id:'robot',     emoji:'🤖', name:'CHROME BOT',      desc:'Machine precision.',              type:'premium', price:60  },
+  { id:'sword',     emoji:'⚔️', name:'WAR BLADE',       desc:'Forged for battle.',              type:'premium', price:60  },
+  { id:'gem',       emoji:'💠', name:'AZURE GEM',       desc:'Cool, calculated, deadly.',       type:'premium', price:55  },
+  { id:'dragon',    emoji:'🐉', name:'DRAGON LORD',     desc:'Ancient power unleashed.',        type:'premium', price:80  },
+  { id:'ghost',     emoji:'👻', name:'PHANTOM',         desc:'You were never here.',            type:'premium', price:55  },
+  { id:'ninja',     emoji:'🥷', name:'SHADOW NINJA',    desc:'Silent. Lethal.',                 type:'premium', price:65  },
+  { id:'nuclear',   emoji:'☢️', name:'NUCLEAR',         desc:'Total annihilation.',             type:'premium', price:80  },
+  { id:'vortex',    emoji:'🌀', name:'VORTEX',          desc:'Suck them into your spiral.',     type:'premium', price:50  },
+  { id:'comet',     emoji:'☄️', name:'COMET STRIKE',    desc:'Impact from above.',              type:'premium', price:70  },
+  { id:'galaxy',    emoji:'🌌', name:'GALAXY BRAIN',    desc:'Infinite territory.',             type:'premium', price:90  },
+  { id:'fox',       emoji:'🦊', name:'CUNNING FOX',     desc:'Outsmart every opponent.',        type:'premium', price:55  },
+  { id:'eagle',     emoji:'🦅', name:'WAR EAGLE',       desc:'Dominance from above.',           type:'premium', price:65  },
+  { id:'spider',    emoji:'🕷️', name:'SPIDER WEB',      desc:'Trap the entire board.',          type:'premium', price:60  },
+  { id:'katana',    emoji:'🗡️', name:'KATANA MASTER',   desc:'One cut, all cells.',             type:'premium', price:70  },
+
+  // ── FREE ACHIEVEMENT MEDALS ─────────────────────────────
+  // Win milestones
+  { id:'first_blood', emoji:'🩸', name:'FIRST BLOOD',   desc:'Win your very first game.',
+    type:'achievement', condition: s => s.totalWins >= 1,    progress: s => Math.min(s.totalWins,1),    target:1   },
+  { id:'ten_wins',    emoji:'🔟', name:'DECA WARRIOR',  desc:'10 total wins.',
+    type:'achievement', condition: s => s.totalWins >= 10,   progress: s => Math.min(s.totalWins,10),   target:10  },
+  { id:'fifty_wins',  emoji:'🌟', name:'STAR FIGHTER',  desc:'50 total wins.',
+    type:'achievement', condition: s => s.totalWins >= 50,   progress: s => Math.min(s.totalWins,50),   target:50  },
+  { id:'hundred_wins',emoji:'💯', name:'CENTURION',     desc:'100 total wins.',
+    type:'achievement', condition: s => s.totalWins >= 100,  progress: s => Math.min(s.totalWins,100),  target:100 },
+  { id:'fiveh_wins',  emoji:'🏆', name:'CHAMPION',      desc:'500 total wins.',
+    type:'achievement', condition: s => s.totalWins >= 500,  progress: s => Math.min(s.totalWins,500),  target:500 },
+  { id:'thousand',    emoji:'🎖️', name:'LEGEND',        desc:'1000 total wins.',
+    type:'achievement', condition: s => s.totalWins >= 1000, progress: s => Math.min(s.totalWins,1000), target:1000},
+
+  // PvP specific
+  { id:'pvp_10',    emoji:'⚔️', name:'DUELIST',        desc:'10 PvP wins.',
+    type:'achievement', condition: s => s.pvpWins >= 10,  progress: s => Math.min(s.pvpWins,10),  target:10  },
+  { id:'pvp_50',    emoji:'🗡️', name:'ARENA VETERAN',  desc:'50 PvP wins.',
+    type:'achievement', condition: s => s.pvpWins >= 50,  progress: s => Math.min(s.pvpWins,50),  target:50  },
+  { id:'pvp_200',   emoji:'👑', name:'ARENA KING',     desc:'200 PvP wins.',
+    type:'achievement', condition: s => s.pvpWins >= 200, progress: s => Math.min(s.pvpWins,200), target:200 },
+
+  // AI specific
+  { id:'ai_easy',   emoji:'🟢', name:'MACHINE SLAYER', desc:'Beat Easy AI.',
+    type:'achievement', condition: s => (s.aiWins?.easy||0) >= 1,   progress: s => Math.min(s.aiWins?.easy||0,1),   target:1  },
+  { id:'ai_medium', emoji:'🤖', name:'CYBER CRUSHER',  desc:'Beat Medium AI 5 times.',
+    type:'achievement', condition: s => (s.aiWins?.medium||0) >= 5,  progress: s => Math.min(s.aiWins?.medium||0,5),  target:5  },
+  { id:'ai_hard',   emoji:'🔴', name:'HARD CODED',     desc:'Beat Hard AI 5 times.',
+    type:'achievement', condition: s => (s.aiWins?.hard||0) >= 5,    progress: s => Math.min(s.aiWins?.hard||0,5),    target:5  },
+  { id:'ai_insane', emoji:'💀', name:'INSANE SLAYER',  desc:'Beat Insane AI once.',
+    type:'achievement', condition: s => (s.aiWins?.insane||0) >= 1,  progress: s => Math.min(s.aiWins?.insane||0,1),  target:1  },
+
+  // POL earnings
+  { id:'pol_1',    emoji:'💰', name:'FIRST EARNINGS',  desc:'Earn 1 POL total.',
+    type:'achievement', condition: s => s.totalPolWon >= 1,   progress: s => Math.min(s.totalPolWon,1),   target:1   },
+  { id:'pol_10',   emoji:'💵', name:'POL EARNER',      desc:'Earn 10 POL total.',
+    type:'achievement', condition: s => s.totalPolWon >= 10,  progress: s => Math.min(s.totalPolWon,10),  target:10  },
+  { id:'pol_100',  emoji:'🤑', name:'POL WHALE',       desc:'Earn 100 POL total.',
+    type:'achievement', condition: s => s.totalPolWon >= 100, progress: s => Math.min(s.totalPolWon,100), target:100 },
+
+  // Blitz specialist
+  { id:'blitz_20', emoji:'⚡', name:'BLITZ KING',      desc:'Win 20 Blitz matches.',
+    type:'achievement', condition: s => (s.modeWins?.blitz||0) >= 20,  progress: s => Math.min(s.modeWins?.blitz||0,20),  target:20  },
+  { id:'war_10',   emoji:'🔥', name:'WAR LORD',        desc:'Win 10 War matches.',
+    type:'achievement', condition: s => (s.modeWins?.war||0) >= 10,    progress: s => Math.min(s.modeWins?.war||0,10),    target:10  },
+
+  // Streak / special
+  { id:'streak_5', emoji:'🌶️', name:'ON FIRE',         desc:'Win 5 games in a row.',
+    type:'achievement', condition: s => s.bestStreak >= 5,  progress: s => Math.min(s.bestStreak,5),  target:5  },
+  { id:'streak_10',emoji:'🚀', name:'ROCKET STREAK',   desc:'Win 10 games in a row.',
+    type:'achievement', condition: s => s.bestStreak >= 10, progress: s => Math.min(s.bestStreak,10), target:10 },
+  { id:'comeback', emoji:'↩️', name:'COMEBACK KID',    desc:'Win a game after being behind.',
+    type:'achievement', condition: s => s.comebacks >= 1,   progress: s => Math.min(s.comebacks,1),   target:1  },
+  { id:'domination',emoji:'💪',name:'DOMINATOR',       desc:'Win with 80%+ territory.',
+    type:'achievement', condition: s => s.dominations >= 1, progress: s => Math.min(s.dominations,1), target:1  },
+  { id:'veteran',  emoji:'🎗️', name:'VETERAN',         desc:'Play 100 total games.',
+    type:'achievement', condition: s => s.gamesPlayed >= 100,progress: s => Math.min(s.gamesPlayed,100),target:100},
+  { id:'marathon', emoji:'🏃', name:'MARATHON RUNNER', desc:'Play 500 total games.',
+    type:'achievement', condition: s => s.gamesPlayed >= 500,progress: s => Math.min(s.gamesPlayed,500),target:500},
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let walletAddress=null, pvpGameMode=15, pcGameMode=15, gameMode=15;
+let difficulty='easy', isVsPC=false, stakeAmount=.1;
+let gameRunning=false, timerInterval=null, aiInterval=null, timeLeft=15;
+let cells=[], taps1=0, taps2=0, combo1=1, combo2=1, lastTap1=0, lastTap2=0;
+let powerCells=new Set(), currentBattleId=null;
+let playerName=localStorage.getItem('tapstar_name')||'';
+let currentStreak=0;
+let wasLosingMidgame=false; // for comeback tracking
+
+// Medal state
+let equippedMedalId = localStorage.getItem('tapstar_equipped')||null;
+let p2MedalId = null; // opponent's medal (demo: random from their owned, or null)
+let currentStoreTab = 'premium';
+let currentLbPeriod = 'daily';
+
+// ── STATS STORAGE ────────────────────────────────────────────
+function getStats() {
+  try { return JSON.parse(localStorage.getItem('tapstar_stats')||'{}'); }
+  catch { return {}; }
+}
+function saveStats(s){ localStorage.setItem('tapstar_stats',JSON.stringify(s)); }
+
+function getOwnedMedals(){
+  try { return JSON.parse(localStorage.getItem('tapstar_owned')||'[]'); }
+  catch { return []; }
+}
+function saveOwnedMedals(arr){ localStorage.setItem('tapstar_owned',JSON.stringify(arr)); }
+
+function hasMedal(id){ return getOwnedMedals().includes(id); }
+
+function grantMedal(id){
+  const owned = getOwnedMedals();
+  if (!owned.includes(id)){ owned.push(id); saveOwnedMedals(owned); return true; }
+  return false;
+}
+
+// ── WALLET ───────────────────────────────────────────────────
+async function connectWallet(){
+  // Detect mobile with no injected wallet
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if(!window.ethereum){
+    if(isMobile){
+      // Build deep link to open current page inside MetaMask mobile browser
+      const pageUrl = encodeURIComponent(window.location.href);
+      const deepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      setStatus("OPEN IN METAMASK BROWSER TO CONNECT", "error");
+      // Show a visible button/link
+      const existing = document.getElementById('mmDeepLink');
+      if(!existing){
+        const link = document.createElement('a');
+        link.id = 'mmDeepLink';
+        link.href = deepLink;
+        link.textContent = '📲 OPEN IN METAMASK APP';
+        link.style.cssText = `
+          display:block; margin-top:10px; padding:12px;
+          background:rgba(255,102,0,0.15); border:1px solid #ff6600;
+          color:#ff6600; font-family:'Share Tech Mono',monospace;
+          font-size:.75rem; letter-spacing:2px; text-align:center;
+          text-decoration:none; cursor:pointer;
+        `;
+        document.getElementById('statusLog').insertAdjacentElement('afterend', link);
+      }
+    } else {
+      setStatus("METAMASK NOT FOUND — INSTALL AT METAMASK.IO", "error");
+    }
+    return;
+  }
+
+  try{
+    setStatus("REQUESTING ACCESS...","active");
+    const accounts = await window.ethereum.request({method:'eth_requestAccounts'});
+    walletAddress = accounts[0];
+    await checkNetwork();
+    await updateBalance();
+    const s = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
+    document.getElementById('walletBtn').textContent = `[ ${s} ]`;
+    document.getElementById('walletBtn').classList.add('connected');
+    document.getElementById('walletAddr').textContent = s;
+    setStatus("WALLET CONNECTED ✓","success");
+    document.getElementById('battleBtn').disabled = false;
+    updateWinnerGets();
+    updateFeeWalletDisplay();
+    window.ethereum.on('accountsChanged', a => { walletAddress = a[0]; updateBalance(); });
+    window.ethereum.on('chainChanged', () => checkNetwork());
+  } catch(e){
+    setStatus("FAILED: " + e.message, "error");
+  }
+}
+
+// ── LOBBY ────────────────────────────────────────────────────
+function switchTab(t){
+  ['tabPvP','tabPC'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['panelPvP','panelPC'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById(t==='pvp'?'tabPvP':'tabPC').classList.add('active');
+  document.getElementById(t==='pvp'?'panelPvP':'panelPC').classList.add('active');
+}
+function selectMode(el,time,which){
+  const id=which==='pvp'?'pvpModes':'pcModes';
+  document.querySelectorAll('#'+id+' .mode-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  if(which==='pvp') pvpGameMode=time; else pcGameMode=time;
+}
+function selectDiff(el,diff){
+  document.querySelectorAll('.diff-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected'); difficulty=diff;
+}
+function setStake(v){document.getElementById('stakeInput').value=v;stakeAmount=v;updateWinnerGets();}
+function updateWinnerGets(){
+  const s=parseFloat(document.getElementById('stakeInput').value)||.1;
+  stakeAmount=s;
+  const pot=s*2,pay=pot*(1-PROTOCOL_FEE),fee=pot*PROTOCOL_FEE;
+  document.getElementById('winnerGets').textContent=pay.toFixed(4)+' POL';
+  document.getElementById('protocolFeeDisplay').textContent=fee.toFixed(4)+' POL → your wallet';
+}
+document.getElementById('stakeInput').addEventListener('input',updateWinnerGets);
+function setStatus(m,t=''){const el=document.getElementById('statusLog');el.textContent='// '+m;el.className='status-log '+t;}
+
+// ── GAME START ───────────────────────────────────────────────
+function startBattle(vsPC){
+  isVsPC=vsPC;
+  gameMode=vsPC?pcGameMode:pvpGameMode;
+  stakeAmount=parseFloat(document.getElementById('stakeInput').value)||.1;
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('game-screen').classList.add('show');
+  const modeNames={15:'BLITZ',30:'DUEL',60:'WAR'};
+
+  // Set medals for display
+  const myMedal = getMedalById(equippedMedalId);
+  document.getElementById('medalBadge1').textContent = myMedal ? myMedal.emoji : '';
+
+  // P2 medal: in PvP it would come from opponent's equipped, here we demo with a random owned for AI
+  if(vsPC){
+    const aiMedals=['🤖','👾','💀','🔴','💥'];
+    p2MedalId='ai_demo';
+    document.getElementById('medalBadge2').textContent=aiMedals[Math.floor(Math.random()*aiMedals.length)];
+    document.getElementById('pcIndicator').classList.add('show');
+    document.getElementById('diffLabel').textContent=difficulty.toUpperCase();
+    document.getElementById('p2label').textContent='🤖 COMPUTER';
+    document.getElementById('tapBtn2').innerHTML=`<span class="tap-medal-badge" id="medalBadge2">${document.getElementById('medalBadge2').textContent}</span>🤖 AUTO<span class="tap-count" id="tapCount2">0 TAPS</span>`;
+    document.getElementById('tapBtn2').disabled=true;
+    document.getElementById('tapBtn2').style.opacity='.45';
+    document.getElementById('displayStake').textContent='FREE';
+    document.getElementById('displayPot').textContent='FREE';
+  }else{
+    p2MedalId=null;
+    document.getElementById('medalBadge2').textContent='';
+    document.getElementById('pcIndicator').classList.remove('show');
+    document.getElementById('p2label').textContent='PLAYER 2';
+    document.getElementById('tapBtn2').innerHTML=`<span class="tap-medal-badge" id="medalBadge2"></span>TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>`;
+    document.getElementById('tapBtn2').disabled=false;
+    document.getElementById('tapBtn2').style.opacity='1';
+    document.getElementById('displayStake').textContent=stakeAmount.toFixed(2);
+    document.getElementById('displayPot').textContent=(stakeAmount*2).toFixed(2);
+  }
+
+  document.getElementById('p1label').textContent='PLAYER 1';
+  document.getElementById('displayMode').textContent=modeNames[gameMode];
+  wasLosingMidgame=false;
+  initGrid();
+  startTimer();
+}
+
+// ── GRID ─────────────────────────────────────────────────────
+function getMedalEmoji(player){
+  if(player===1) return getMedalById(equippedMedalId)?.emoji||null;
+  // P2 emoji stored in badge
+  const b=document.getElementById('medalBadge2');
+  return b&&b.textContent?b.textContent:null;
+}
+
+function initGrid(){
+  const arena=document.getElementById('arena');
+  arena.style.gridTemplateColumns=`repeat(${GRID_SIZE},1fr)`;
+  arena.innerHTML='';
+  cells=[]; taps1=0; taps2=0; combo1=1; combo2=1; lastTap1=0; lastTap2=0;
+  powerCells.clear();
+  document.getElementById('tapCount1').textContent='0 TAPS';
+  const tc2=document.getElementById('tapCount2');
+  if(tc2)tc2.textContent='0 TAPS';
+  document.getElementById('combo1').textContent='P1 COMBO x1';
+  document.getElementById('combo2').textContent='P2 COMBO x1';
+  document.getElementById('combo1').classList.remove('hot');
+  document.getElementById('combo2').classList.remove('hot');
+  for(let i=0;i<GRID_SIZE*GRID_SIZE;i++){
+    const cell=document.createElement('div');
+    cell.className='cell neutral';
+    arena.appendChild(cell);
+    cells.push({el:cell,owner:0});
+  }
+  updateScores();
+}
+
+function setCellVisual(cellObj, player){
+  cellObj.el.className=`cell p${player}`;
+  cellObj.el.innerHTML='';
+  const medal=getMedalEmoji(player);
+  if(medal){
+    const m=document.createElement('span');
+    m.className='cell-medal';
+    m.textContent=medal;
+    cellObj.el.appendChild(m);
+  }
+}
+
+// ── TAP LOGIC ────────────────────────────────────────────────
+function tap(player,e){
+  if(e)e.preventDefault();
+  if(!gameRunning)return;
+  if(player===2&&isVsPC)return;
+  const now=Date.now();
+  if(player===1){
+    taps1++;
+    document.getElementById('tapCount1').textContent=taps1+' TAPS';
+    combo1=(now-lastTap1<500)?Math.min(combo1+1,5):1;
+    lastTap1=now;
+    document.getElementById('combo1').textContent=`P1 COMBO x${combo1}`;
+    document.getElementById('combo1').classList.toggle('hot',combo1>=3);
+    for(let i=0;i<combo1;i++)invadeCell(1);
+  }else{
+    taps2++;
+    const tc2=document.getElementById('tapCount2');
+    if(tc2)tc2.textContent=taps2+' TAPS';
+    combo2=(now-lastTap2<500)?Math.min(combo2+1,5):1;
+    lastTap2=now;
+    document.getElementById('combo2').textContent=`P2 COMBO x${combo2}`;
+    document.getElementById('combo2').classList.toggle('hot',combo2>=3);
+    for(let i=0;i<combo2;i++)invadeCell(2);
+  }
+  updateScores();
+}
+
+function invadeCell(player){
+  const neutral=cells.filter(c=>c.owner===0);
+  const enemy=cells.filter(c=>c.owner===(player===1?2:1));
+  let target=null;
+  if(neutral.length>0&&Math.random()<.7)target=neutral[Math.floor(Math.random()*neutral.length)];
+  else if(enemy.length>0)target=enemy[Math.floor(Math.random()*enemy.length)];
+  else if(neutral.length>0)target=neutral[Math.floor(Math.random()*neutral.length)];
+  if(!target)return;
+  const idx=cells.indexOf(target);
+  const isPower=powerCells.has(idx);
+  target.owner=player;
+  setCellVisual(target,player);
+  target.el.classList.add('flash-p'+player);
+  if(isPower){powerCells.delete(idx);for(let b=0;b<2;b++)invadeCell(player);}
+  setTimeout(()=>{if(target.el)target.el.classList.remove('flash-p'+player);},200);
+}
+
+function aiInvade(stealChance, comboMax){
+  const neutral = cells.filter(c => c.owner === 0);
+  const enemy   = cells.filter(c => c.owner === 1);
+  let target = null;
+
+  // Higher steal chance = AI actively hunts player cells first
+  if(Math.random() < stealChance && enemy.length > 0){
+    target = enemy[Math.floor(Math.random() * enemy.length)];
+  } else if(neutral.length > 0){
+    target = neutral[Math.floor(Math.random() * neutral.length)];
+  } else if(enemy.length > 0){
+    target = enemy[Math.floor(Math.random() * enemy.length)];
+  }
+  if(!target) return;
+
+  const idx = cells.indexOf(target);
+  const isPower = powerCells.has(idx);
+  target.owner = 2;
+  setCellVisual(target, 2);
+  target.el.classList.add('flash-p2');
+  if(isPower){
+    powerCells.delete(idx);
+    for(let b = 0; b < 2; b++) aiInvade(stealChance, comboMax);
+  }
+  setTimeout(() => { if(target.el) target.el.classList.remove('flash-p2'); }, 200);
+}
+
+function spawnPowerUp(){
+  const neutral=cells.filter((c,i)=>c.owner===0&&!powerCells.has(i));
+  if(!neutral.length)return;
+  const t=neutral[Math.floor(Math.random()*neutral.length)];
+  const idx=cells.indexOf(t);
+  powerCells.add(idx);
+  const icon=document.createElement('span');
+  icon.className='cell-power-icon';
+  icon.textContent='⚡';
+  t.el.appendChild(icon);
+  t.el.classList.add('power');
+}
+
+function updateScores(){
+  const s1=cells.filter(c=>c.owner===1).length;
+  const s2=cells.filter(c=>c.owner===2).length;
+  document.getElementById('score1').textContent=s1;
+  document.getElementById('score2').textContent=s2;
+  document.getElementById('territoryFill').style.width=((s1/cells.length)*100)+'%';
+  // Track if P1 was losing (for comeback)
+  if(s2>s1&&gameRunning)wasLosingMidgame=true;
+}
+
+// ── TIMER ────────────────────────────────────────────────────
+function startTimer(){
+  timeLeft=gameMode; gameRunning=true;
+  document.getElementById('timer').textContent=timeLeft;
+  document.getElementById('timer').classList.remove('urgent');
+  const pwrInt=setInterval(()=>{if(!gameRunning){clearInterval(pwrInt);return;}if(Math.random()<.4)spawnPowerUp();},3000);
+  if(isVsPC){
+  const cfg = AI_CONFIG[difficulty];
+  aiInterval = setInterval(() => {
+    if(!gameRunning){ clearInterval(aiInterval); return; }
+    // Combo: on harder difficulties AI reliably chains more cells
+    const doCombo = Math.random() < cfg.comboChance;
+    const c = doCombo ? Math.floor(Math.random() * (cfg.comboMax - 1)) + 2 : 1;
+    for(let i = 0; i < c; i++) aiInvade(cfg.stealChance, cfg.comboMax);
+    taps2++;
+    const tc2 = document.getElementById('tapCount2');
+    if(tc2) tc2.textContent = taps2 + ' TAPS';
+    updateScores();
+  }, cfg.interval);
+}
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timer').textContent=timeLeft;
+    if(timeLeft<=10)document.getElementById('timer').classList.add('urgent');
+    if(timeLeft<=0){clearInterval(timerInterval);clearInterval(pwrInt);if(aiInterval)clearInterval(aiInterval);endGame();}
+  },1000);
+}
+
+// ── END GAME ─────────────────────────────────────────────────
+function endGame(){
+  gameRunning=false;
+  const s1=cells.filter(c=>c.owner===1).length;
+  const s2=cells.filter(c=>c.owner===2).length;
+  const total=cells.length;
+  const pct1=s1/total;
+
+  let winnerNum=null;
+  const rt=document.getElementById('resultTitle');
+  if(s1>s2){winnerNum=1;rt.textContent=isVsPC?'YOU WIN! 🏆':'PLAYER 1 WINS!';rt.className='result-title p1-win';}
+  else if(s2>s1){winnerNum=2;rt.textContent=isVsPC?'🤖 AI WINS!':'PLAYER 2 WINS!';rt.className='result-title p2-win';}
+  else{rt.textContent='DRAW!';rt.className='result-title draw';}
+
+  document.getElementById('finalScore1').textContent=s1;
+  document.getElementById('finalScore2').textContent=s2;
+  document.getElementById('finalPct').textContent=Math.round(Math.max(pct1,(s2/total))*100)+'%';
+
+  // Update stats
+  const stats=getStats();
+  stats.gamesPlayed=(stats.gamesPlayed||0)+1;
+  stats.pvpWins=stats.pvpWins||0;
+  stats.totalWins=stats.totalWins||0;
+  stats.totalPolWon=stats.totalPolWon||0;
+  stats.aiWins=stats.aiWins||{};
+  stats.modeWins=stats.modeWins||{};
+  stats.bestStreak=stats.bestStreak||0;
+  stats.comebacks=stats.comebacks||0;
+  stats.dominations=stats.dominations||0;
+
+  const modeName=gameMode===15?'blitz':gameMode===30?'duel':'war';
+  let polWon=0;
+
+  if(winnerNum===1){
+    stats.totalWins++;
+    currentStreak++;
+    stats.bestStreak=Math.max(stats.bestStreak,currentStreak);
+    if(isVsPC){stats.aiWins[difficulty]=(stats.aiWins[difficulty]||0)+1;}
+    else{stats.pvpWins++;polWon=stakeAmount*(2*(1-PROTOCOL_FEE))/2;stats.totalPolWon+=polWon;}
+    stats.modeWins[modeName]=(stats.modeWins[modeName]||0)+1;
+    if(wasLosingMidgame)stats.comebacks++;
+    if(pct1>=.8)stats.dominations++;
+  }else if(winnerNum===2){
+    currentStreak=0;
+  }else{
+    currentStreak=0;
+  }
+  saveStats(stats);
+
+  // Check achievements
+  const newlyUnlocked=checkAchievements(stats);
+
+  // Payout display
+  if(isVsPC){
+    document.getElementById('payoutAmount').textContent='FREE PRACTICE';
+    document.getElementById('payoutAmount').style.fontSize='1.2rem';
+    document.getElementById('payoutLabel').textContent=difficulty.toUpperCase()+' DIFFICULTY';
+    document.getElementById('blockchainNote').textContent='No POL at stake. Switch to PvP to win real POL!';
+  }else{
+    const pot=stakeAmount*2,pay=pot*(1-PROTOCOL_FEE),fee=pot*PROTOCOL_FEE;
+    document.getElementById('payoutAmount').textContent=`+${pay.toFixed(4)} POL`;
+    document.getElementById('payoutAmount').style.fontSize='2rem';
+    document.getElementById('payoutLabel').textContent=`WINNER PAYOUT — ${fee.toFixed(4)} POL → DEV WALLET`;
+    document.getElementById('blockchainNote').textContent=CONTRACT_ADDRESS
+      ?`Contract auto-sends ${pay.toFixed(4)} POL to winner.`
+      :'Deploy TapStarArena.sol via remix.ethereum.org to enable real payouts.';
+  }
+
+  // Show unlocked medals
+  const ub=document.getElementById('unlockBox');
+  const um=document.getElementById('unlockMedals');
+  if(newlyUnlocked.length>0){
+    ub.style.display='block';
+    um.innerHTML=newlyUnlocked.map(m=>`<div class="unlock-medal"><div>${m.emoji}</div><div class="unlock-medal-name">${m.name}</div></div>`).join('');
+  }else{
+    ub.style.display='none';
+  }
+
+  // Save leaderboard entry
+  if(winnerNum){
+    const name=playerName||(walletAddress?walletAddress.slice(0,8):'ANON');
+    saveResult(name,polWon,isVsPC,difficulty);
+  }
+
+  document.getElementById('result-overlay').classList.add('show');
+}
+
+function checkAchievements(stats){
+  const unlocked=[];
+  for(const m of ALL_MEDALS){
+    if(m.type!=='achievement')continue;
+    if(hasMedal(m.id))continue;
+    if(m.condition(stats)){
+      grantMedal(m.id);
+      unlocked.push(m);
+    }
+  }
+  return unlocked;
+}
+
+// ── NAV ──────────────────────────────────────────────────────
+function rematch(){
+  document.getElementById('result-overlay').classList.remove('show');
+  if(aiInterval)clearInterval(aiInterval);
+  wasLosingMidgame=false;
+  initGrid();startTimer();
+}
+function backToLobby(){
+  document.getElementById('result-overlay').classList.remove('show');
+  document.getElementById('game-screen').classList.remove('show');
+  document.getElementById('lobby').style.display='flex';
+  document.getElementById('lobby').style.flexDirection='column';
+  if(timerInterval)clearInterval(timerInterval);
+  if(aiInterval)clearInterval(aiInterval);
+  gameRunning=false;isVsPC=false;currentBattleId=null;wasLosingMidgame=false;
+  document.getElementById('tapBtn2').innerHTML='TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>';
+  document.getElementById('tapBtn2').disabled=false;
+  document.getElementById('tapBtn2').style.opacity='1';
+  document.getElementById('pcIndicator').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MEDAL STORE
+// ═══════════════════════════════════════════════════════════
+function getMedalById(id){ return ALL_MEDALS.find(m=>m.id===id)||null; }
+
+function equipMedal(id){
+  equippedMedalId=id;
+  localStorage.setItem('tapstar_equipped',id);
+  updateEquippedBanner();
+  renderStoreContent(currentStoreTab);
+  showToast('Medal equipped! It will appear in your cells during battle.');
+}
+function unequipMedal(){
+  equippedMedalId=null;
+  localStorage.removeItem('tapstar_equipped');
+  updateEquippedBanner();
+  renderStoreContent(currentStoreTab);
+  showToast('Medal unequipped.');
+}
+
+function updateEquippedBanner(){
+  const m=getMedalById(equippedMedalId);
+  document.getElementById('equippedPreview').textContent=m?m.emoji:'—';
+  document.getElementById('equippedName').textContent=m?m.name:'NO MEDAL EQUIPPED';
+  document.getElementById('equippedSub').textContent=m
+    ?`${m.type==='premium'?m.price+' POL':'Achievement'} • Equipped`
+    :'Select a medal below to display it in your cells during battle';
+}
+
+function buyMedal(id){
+  // In production this triggers a POL transaction via MetaMask to your wallet
+  // For demo purposes we simulate the purchase
+  if(!walletAddress){showToast('Connect your wallet first!');return;}
+  const m=getMedalById(id);
+  if(!m)return;
+  // Simulate: in real version → send m.price POL to PROTOCOL_FEE_WALLET, then grant NFT
+  grantMedal(id);
+  equipMedal(id);
+  showToast(`${m.emoji} ${m.name} purchased & equipped!`);
+  renderStoreContent(currentStoreTab);
+}
+
+function renderStoreContent(tab){
+  const el=document.getElementById('storeContent');
+  const owned=getOwnedMedals();
+  const stats=getStats();
+  let medals=[];
+
+  if(tab==='premium') medals=ALL_MEDALS.filter(m=>m.type==='premium');
+  else if(tab==='achievements') medals=ALL_MEDALS.filter(m=>m.type==='achievement');
+  else medals=ALL_MEDALS.filter(m=>owned.includes(m.id));
+
+  if(tab==='collection'&&medals.length===0){
+    el.innerHTML=`<div class="lb-empty">// NO MEDALS YET<br>BUY FROM THE STORE OR EARN THROUGH ACHIEVEMENTS</div>`;
+    return;
+  }
+
+  let html=`<div class="medal-grid">`;
+  for(const m of medals){
+    const isOwned=owned.includes(m.id);
+    const isEquipped=equippedMedalId===m.id;
+    const prog=m.progress?m.progress(stats):0;
+    const isUnlocked=m.type==='achievement'&&isOwned;
+    const isLocked=m.type==='achievement'&&!isOwned;
+
+    let cardClass='medal-card';
+    if(isEquipped)cardClass+=' equipped';
+    else if(isOwned)cardClass+=' owned';
+    else if(isLocked)cardClass+=' locked';
+
+    let badge='';
+    if(isEquipped)badge=`<span class="medal-badge equipped">EQUIPPED</span>`;
+    else if(isOwned)badge=`<span class="medal-badge owned">OWNED</span>`;
+    else if(isLocked)badge=`<span class="medal-badge locked-badge">LOCKED</span>`;
+
+    let priceHtml='';
+    if(m.type==='premium'){
+      priceHtml=`<div class="medal-price">${isOwned?'OWNED':m.price+' POL'}</div>`;
+    }else{
+      priceHtml=`<div class="medal-price free">${isOwned?'UNLOCKED':'FREE'}</div>`;
+    }
+
+    let actionHtml='';
+    if(isEquipped){
+      actionHtml=`<button class="medal-btn equipped-btn" onclick="unequipMedal()">✓ EQUIPPED</button>`;
+    }else if(isOwned){
+      actionHtml=`<button class="medal-btn equip" onclick="equipMedal('${m.id}')">EQUIP</button>`;
+    }else if(m.type==='premium'){
+      actionHtml=`<button class="medal-btn buy" onclick="buyMedal('${m.id}')">BUY ${m.price} POL</button>`;
+    }else{
+      // Locked achievement — show progress
+      const pct=Math.round((prog/m.target)*100);
+      actionHtml=`<div class="medal-progress">${prog}/${m.target} (${pct}%)</div><div class="medal-progress-bar"><div class="medal-progress-fill" style="width:${pct}%"></div></div>`;
+    }
+
+    html+=`<div class="${cardClass}">
+      ${badge}
+      <span class="medal-emoji">${m.emoji}</span>
+      <div class="medal-name">${m.name}</div>
+      <div class="medal-desc">${m.desc}</div>
+      ${priceHtml}
+      <div class="medal-action">${actionHtml}</div>
+    </div>`;
+  }
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+
+function showStoreTab(tab,tabEl){
+  currentStoreTab=tab;
+  document.querySelectorAll('.store-tab').forEach(t=>t.classList.remove('active'));
+  if(tabEl)tabEl.classList.add('active');
+  renderStoreContent(tab);
+}
+
+function openStore(){
+  updateEquippedBanner();
+  document.getElementById('store-overlay').classList.add('show');
+  renderStoreContent(currentStoreTab);
+}
+function closeStore(){document.getElementById('store-overlay').classList.remove('show');}
+
+// ── TOAST ─────────────────────────────────────────────────────
+let toastTimer=null;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LEADERBOARD
+// ═══════════════════════════════════════════════════════════
+function getLbData(){try{return JSON.parse(localStorage.getItem('tapstar_lb')||'[]');}catch{return[];}}
+function saveLbData(d){localStorage.setItem('tapstar_lb',JSON.stringify(d));}
+function saveResult(name,polWon,vsPC,diff){
+  if(!name||!name.trim())return;
+  const data=getLbData();
+  data.push({name:name.trim().toUpperCase().replace(/[^A-Z0-9_]/g,'').slice(0,16),polWon:parseFloat(polWon)||0,timestamp:Date.now(),vsPC:!!vsPC,difficulty:diff||''});
+  saveLbData(data);
+}
+function savePlayerName(){
+  const v=document.getElementById('lbNameInput').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g,'');
+  if(!v)return;
+  playerName=v;localStorage.setItem('tapstar_name',v);
+  document.getElementById('lbNameInput').value=v;
+  const btn=document.getElementById('lbSaveBtn');btn.textContent='SAVED ✓';
+  setTimeout(()=>btn.textContent='SAVE TAG',1500);
+}
+function getPeriodStart(p){
+  const n=new Date();
+  if(p==='daily'){const d=new Date(n);d.setHours(0,0,0,0);return d.getTime();}
+  if(p==='weekly'){const d=new Date(n);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();}
+  if(p==='monthly')return new Date(n.getFullYear(),n.getMonth(),1).getTime();
+  return 0;
+}
+function aggregateLb(period){
+  const data=getLbData(),since=getPeriodStart(period),map={};
+  for(const e of data){
+    if(e.timestamp<since)continue;
+    const k=e.name;
+    if(!map[k])map[k]={name:k,wins:0,polWon:0,pvpWins:0,pcWins:0};
+    map[k].wins++;map[k].polWon+=e.polWon||0;
+    if(e.vsPC)map[k].pcWins++;else map[k].pvpWins++;
+  }
+  return Object.values(map).sort((a,b)=>b.wins-a.wins||b.polWon-a.polWon);
+}
+function renderLeaderboard(period){
+  const rows=aggregateLb(period),el=document.getElementById('lbContent');
+  if(!rows.length){el.innerHTML=`<div class="lb-empty">// NO DATA YET<br>PLAY GAMES TO APPEAR HERE</div>`;return;}
+  const medals=['🥇','🥈','🥉'],cls=['gold','silver','bronze'];
+  let h=`<table class="lb-table"><thead><tr><th>#</th><th>PLAYER</th><th>WINS</th><th>PVP</th><th>VS AI</th><th>POL WON</th></tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const me=r.name===playerName;
+    const owned=getOwnedMedals();
+    // Show player's equipped medal in leaderboard (stored separately — simplified: use first owned)
+    h+=`<tr ${me?'style="background:rgba(0,255,204,.06)"':''}>
+      <td><span class="lb-rank ${cls[i]||''}">${medals[i]||i+1}</span></td>
+      <td><span class="lb-player" style="${me?'text-decoration:underline':''}">${r.name}${me?' ◀':''}</span></td>
+      <td><span class="lb-wins">${r.wins}</span></td>
+      <td style="color:#4a6a8a">${r.pvpWins}</td>
+      <td style="color:#4a6a8a">${r.pcWins}</td>
+      <td><span class="lb-pol">${r.polWon>0?'+'+r.polWon.toFixed(3):'-'}</span></td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+function showLbPeriod(p,tab){
+  currentLbPeriod=p;
+  document.querySelectorAll('.lb-tab').forEach(t=>t.classList.remove('active'));
+  if(tab)tab.classList.add('active');
+  renderLeaderboard(p);
+}
+function openLeaderboard(){
+  document.getElementById('lb-overlay').classList.add('show');
+  document.getElementById('lbNameInput').value=playerName;
+  renderLeaderboard(currentLbPeriod);
+}
+function closeLeaderboard(){document.getElementById('lb-overlay').classList.remove('show');}
+
+// ── INIT ─────────────────────────────────────────────────────
+updateWinnerGets();
+updateFeeWalletDisplay();
+if(window.ethereum&&window.ethereum.selectedAddress){walletAddress=window.ethereum.selectedAddress;connectWallet();}
+
+// Grant starter medal if first time
+setTimeout(()=>{
+  if(!getOwnedMedals().length){
+    grantMedal('first_blood');
+    // also check if they already have wins from storage
+    checkAchievements(getStats());
+  }
+},500);
+</script>
+</body>
+</html>
