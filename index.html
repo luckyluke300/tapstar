@@ -1385,27 +1385,28 @@ function applyOpponentGrid(oppGrid) {
     if (idx >= cells.length) return;
     
     const cell = cells[idx];
-    const currentOwner = cell.owner;
     
-    // Skip if we own this cell - never let opponent override our ownership
-    if (currentOwner === myPlayerNum) return;
-    
-    // Apply opponent's cell state properly
+    // Trust the opponent's data - apply it regardless of local state
+    // This fixes the "cells not showing" bug
     if (oppOwner === oppNum) {
-      // Opponent owns this cell
-      if (currentOwner !== oppNum) {
-        cell.owner = oppNum;
-        setCellVisual(cell, oppNum);
+      cell.owner = oppNum;
+      setCellVisual(cell, oppNum);
+    } else if (oppOwner === myPlayerNum) {
+      // Opponent says we own this cell - keep it
+      if (cell.owner !== myPlayerNum) {
+        cell.owner = myPlayerNum;
+        setCellVisual(cell, myPlayerNum);
       }
     } else if (oppOwner === 0) {
-      // Opponent shows this as neutral - reset if we incorrectly have it as opponent's
-      if (currentOwner === oppNum) {
-        cell.owner = 0;
-        cell.el.className = 'cell neutral';
-        cell.el.innerHTML = '';
-      }
+      // Opponent says it's neutral
+      cell.owner = 0;
+      cell.el.className = 'cell neutral';
+      cell.el.innerHTML = '';
     }
   });
+  
+  // Force score recalculation from actual grid state
+  updateScores();
 }
 
 function subscribeToRoom(code) {
@@ -1720,9 +1721,14 @@ function tap(player, e) {
 }
 
 function invadeCell(player) {
+  // Skip if not my turn (only I can capture for myself)
+  if (player !== myPlayerNum && isOnlinePvP) return;
+  
   const neutral = cells.filter(c => c.owner === 0);
-  const enemy   = cells.filter(c => c.owner === (player === 1 ? 2 : 1));
+  const enemy   = cells.filter(c => c.owner !== player && c.owner !== 0);
+  
   let target = null;
+  
   if (neutral.length > 0 && Math.random() < 0.7) {
     target = neutral[Math.floor(Math.random() * neutral.length)];
   } else if (enemy.length > 0) {
@@ -1730,26 +1736,30 @@ function invadeCell(player) {
   } else if (neutral.length > 0) {
     target = neutral[Math.floor(Math.random() * neutral.length)];
   }
+  
   if (!target) return;
+  
   const idx = cells.indexOf(target);
   const isPower = powerCells.has(idx);
+  
   target.owner = player;
   setCellVisual(target, player);
-  // Use visual flash class (p1 for me, p2 for opponent)
+  
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
   target.el.classList.add(flashClass);
+  
   if (isPower) {
     powerCells.delete(idx);
     for (let b = 0; b < 2; b++) invadeCell(player);
   }
-  setTimeout(() => { if (target.el) target.el.classList.remove(flashClass); }, 200);
-if (isOnlinePvP && player === myPlayerNum) {
-    if (!invadeCell._syncTimer) {
-      invadeCell._syncTimer = setTimeout(() => {
-        syncMyGrid();
-        invadeCell._syncTimer = null;
-      }, 50);
-    }
+  
+  setTimeout(() => { 
+    if (target.el) target.el.classList.remove(flashClass); 
+  }, 200);
+  
+  // Sync immediately after capturing
+  if (isOnlinePvP && player === myPlayerNum) {
+    syncMyGrid();
   }
 }
 
@@ -1791,13 +1801,16 @@ function spawnPowerUp() {
 }
 
 function updateScores() {
-  const s1 = cells.filter(c => c.owner === 1).length;
-  const s2 = isOnlinePvP ? opponentScore : cells.filter(c => c.owner === 2).length;
+  const s1 = cells.filter(c => c.owner === myPlayerNum).length;
+  const s2 = cells.filter(c => c.owner !== myPlayerNum && c.owner !== 0).length;
+  
   document.getElementById('score1').textContent = s1;
-  if (!isOnlinePvP) document.getElementById('score2').textContent = s2;
+  document.getElementById('score2').textContent = s2;
+  
   const total = s1 + s2;
   const pct = total > 0 ? (s1 / total * 100) : 50;
   document.getElementById('territoryFill').style.width = pct + '%';
+  
   if (s2 > s1 && gameRunning) wasLosingMidgame = true;
 }
 
@@ -1832,7 +1845,7 @@ function startTimer() {
 
 if (isOnlinePvP) {
     syncMyGrid(); // Sync immediately
-    syncInterval = setInterval(syncMyGrid, 200); // Then every 200ms
+    syncInterval = setInterval(syncMyGrid, 100); // Faster sync - every 100ms
   }
 
   timerInterval = setInterval(() => {
