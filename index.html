@@ -659,7 +659,8 @@ const firebaseConfig = {
 
 let firebaseReady = false;
 let auth, db, firestore;
-
+let lastSyncTimestamp = 0;
+let cellTimestamps = {}; // Track when each cell was captured
 try {
   firebase.initializeApp(firebaseConfig);
   auth      = firebase.auth();
@@ -1378,34 +1379,43 @@ async function createFirebaseRoom(code, p1uid, p2uid, stake, mode) {
   await db.ref(`rooms/${code}`).set(roomData);
   currentRoomCode = code;
 }
-function applyOpponentGrid(oppGrid) {
+function applyOpponentGrid(oppGrid, oppTimestamp) {
   const oppNum = myPlayerNum === 1 ? 2 : 1;
+  
+  // Only apply if this data is newer than what we last processed
+  if (oppTimestamp <= lastSyncTimestamp) return;
+  lastSyncTimestamp = oppTimestamp;
   
   oppGrid.forEach((oppOwner, idx) => {
     if (idx >= cells.length) return;
     
     const cell = cells[idx];
+    const currentOwner = cell.owner;
     
-    // Trust the opponent's data - apply it regardless of local state
-    // This fixes the "cells not showing" bug
+    // Rule 1: If opponent owns it in their data, they own it
     if (oppOwner === oppNum) {
-      cell.owner = oppNum;
-      setCellVisual(cell, oppNum);
-    } else if (oppOwner === myPlayerNum) {
-      // Opponent says we own this cell - keep it
-      if (cell.owner !== myPlayerNum) {
-        cell.owner = myPlayerNum;
-        setCellVisual(cell, myPlayerNum);
+      // Only override if we don't have a more recent capture
+      const myCaptureTime = cellTimestamps[idx] || 0;
+      if (oppTimestamp > myCaptureTime || currentOwner !== myPlayerNum) {
+        cell.owner = oppNum;
+        setCellVisual(cell, oppNum);
       }
-    } else if (oppOwner === 0) {
-      // Opponent says it's neutral
+    }
+    // Rule 2: If it's neutral in opponent's data but we think we own it,
+    // keep our ownership (we captured it more recently)
+    else if (oppOwner === 0 && currentOwner === oppNum) {
+      // Opponent lost this cell - update to neutral
       cell.owner = 0;
       cell.el.className = 'cell neutral';
       cell.el.innerHTML = '';
     }
+    // Rule 3: If opponent says WE own it, trust that
+    else if (oppOwner === myPlayerNum && currentOwner !== myPlayerNum) {
+      cell.owner = myPlayerNum;
+      setCellVisual(cell, myPlayerNum);
+    }
   });
   
-  // Force score recalculation from actual grid state
   updateScores();
 }
 
@@ -1445,30 +1455,24 @@ function subscribeToRoom(code) {
       const oppKey = myPlayerNum === 1 ? 'p2' : 'p1';
       const oppData = room[oppKey];
       
-      if (oppData && oppData.grid && Array.isArray(oppData.grid) && oppData.timestamp) {
-        // Only apply data that's newer than game start time
-        if (!gameStartTime || oppData.timestamp > gameStartTime) {
-          // Merge opponent's cells into our local grid
-          applyOpponentGrid(oppData.grid);
-          
-          // Store opponent score for display and calculations
-          opponentScore = oppData.score || 0;
-          
-          // Update opponent display
-          document.getElementById('score2').textContent = opponentScore;
-          const tc2 = document.getElementById('tapCount2');
-          if (tc2) tc2.textContent = (oppData.taps || 0) + ' TAPS';
-          document.getElementById('combo2').textContent = `OPP COMBO x${oppData.combo || 1}`;
-          document.getElementById('combo2').classList.toggle('hot', (oppData.combo || 1) >= 3);
-          
-          // Update territory bar based on actual cell counts
-          const s1 = cells.filter(c => c.owner === myPlayerNum).length;
-          const s2 = opponentScore;
-          const total = s1 + s2;
-          const pct = total > 0 ? (s1 / total * 100) : 50;
-          document.getElementById('territoryFill').style.width = pct + '%';
+     if (oppData && oppData.grid && Array.isArray(oppData.grid) && oppData.timestamp) {
+          if (!gameStartTime || oppData.timestamp > gameStartTime) {
+            applyOpponentGrid(oppData.grid, oppData.timestamp);
+            
+            opponentScore = oppData.score || 0;
+            document.getElementById('score2').textContent = opponentScore;
+            const tc2 = document.getElementById('tapCount2');
+            if (tc2) tc2.textContent = (oppData.taps || 0) + ' TAPS';
+            document.getElementById('combo2').textContent = `OPP COMBO x${oppData.combo || 1}`;
+            document.getElementById('combo2').classList.toggle('hot', (oppData.combo || 1) >= 3);
+            
+            const s1 = cells.filter(c => c.owner === myPlayerNum).length;
+            const s2 = opponentScore;
+            const total = s1 + s2;
+            const pct = total > 0 ? (s1 / total * 100) : 50;
+            document.getElementById('territoryFill').style.width = pct + '%';
+          }
         }
-      }
     }
  
     // Game ended by opponent
@@ -1645,11 +1649,13 @@ function initGrid() {
 
   const frag = document.createDocumentFragment();
   cells = [];
+  cellTimestamps = {};
   taps1 = 0; taps2 = 0;
   combo1 = 1; combo2 = 1;
   lastTap1 = 0; lastTap2 = 0;
   powerCells.clear();
   opponentScore = 0;
+  lastSyncTimestamp = 0;
   
   // Clear any stale intervals from previous game
   if (syncInterval) clearInterval(syncInterval);
@@ -1743,6 +1749,9 @@ function invadeCell(player) {
   const isPower = powerCells.has(idx);
   
   target.owner = player;
+   if (player === myPlayerNum) {
+    cellTimestamps[idx] = Date.now();
+  }
   setCellVisual(target, player);
   
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
@@ -1759,7 +1768,11 @@ function invadeCell(player) {
   
   // Sync immediately after capturing
   if (isOnlinePvP && player === myPlayerNum) {
-    syncMyGrid();
+     if (!invadeCell._syncTimer) {
+      invadeCell._syncTimer = setTimeout(() => {
+    syncMyGrid();invadeCell._syncTimer = null;
+      }, 50);
+    }
   }
 }
 
