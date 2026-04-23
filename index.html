@@ -1573,18 +1573,57 @@ function startVsPC() {
 //  GAME SCREEN SETUP
 // ═══════════════════════════════════════════════════════════
 function startGameScreen(vsPC, onlinePvP) {
+  // ========== CLEANUP FROM PREVIOUS GAME ==========
+  // CRITICAL: Clear ALL intervals from previous game first
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  if (aiInterval) {
+    clearInterval(aiInterval);
+    aiInterval = null;
+  }
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+  
+  // Reset game state flags
+  gameRunning = false;
+  countdownActive = false;
+  
+  // Reset score tracking
+  taps1 = 0;
+  taps2 = 0;
+  combo1 = 1;
+  combo2 = 1;
+  lastTap1 = 0;
+  lastTap2 = 0;
+  opponentScore = 0;
+  wasLosingMidgame = false;
+  
+  // Reset timestamp tracking for sync
+  lastSyncTimestamp = 0;
+  cellTimestamps = {};
+  
+  // Clear the grid and power-ups
+  cells = [];
+  powerCells.clear();
+  
+  // ========== END CLEANUP ==========
+  
   isVsPC      = vsPC;
   isOnlinePvP = onlinePvP;
-
+ 
   const modeNames = { 15: 'BLITZ', 30: 'DUEL', 60: 'WAR' };
   const myName = currentUser?.username || 'YOU';
-
+ 
   document.getElementById('p1label').textContent = myName;
   document.getElementById('displayMode').textContent = modeNames[gameMode] || 'DUEL';
-
+ 
   const myMedal = getMedalById(equippedMedalId);
   document.getElementById('medalBadge1').textContent = myMedal?.emoji || '';
-
+ 
   if (vsPC) {
     const aiMedals = ['🤖','👾','💀','🔴','💥'];
     document.getElementById('medalBadge2').textContent = aiMedals[Math.floor(Math.random()*aiMedals.length)];
@@ -1632,10 +1671,10 @@ function startGameScreen(vsPC, onlinePvP) {
       db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
     }
   }
-
+ 
   wasLosingMidgame = false;
   initGrid();
-
+ 
   // 2 RAF frames to allow render before game logic
   requestAnimationFrame(() => requestAnimationFrame(() => startTimer()));
 }
@@ -1749,9 +1788,12 @@ function invadeCell(player) {
   const isPower = powerCells.has(idx);
   
   target.owner = player;
-   if (player === myPlayerNum) {
+  
+  // Track timestamp for sync conflict resolution
+  if (player === myPlayerNum) {
     cellTimestamps[idx] = Date.now();
   }
+  
   setCellVisual(target, player);
   
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
@@ -1766,13 +1808,23 @@ function invadeCell(player) {
     if (target.el) target.el.classList.remove(flashClass); 
   }, 200);
   
-  // Sync immediately after capturing
+  // Sync and update scores for online PvP
   if (isOnlinePvP && player === myPlayerNum) {
-     if (!invadeCell._syncTimer) {
+    // Force immediate score update on screen
+    updateScores();
+    
+    // Debounced sync to Firebase
+    if (!invadeCell._syncTimer) {
       invadeCell._syncTimer = setTimeout(() => {
-    syncMyGrid();invadeCell._syncTimer = null;
+        syncMyGrid();
+        invadeCell._syncTimer = null;
       }, 50);
     }
+  }
+  
+  // For VS PC mode, update scores immediately too
+  if (isVsPC) {
+    updateScores();
   }
 }
 
