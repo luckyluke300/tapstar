@@ -162,7 +162,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 @keyframes spinPow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* ── TAP BUTTONS ── */
-.tap-area{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tap-area{display:flex;gap:12px;width:100%;}
+.tap-area .tap-btn{flex:1;}
+.tap-area.vs-pc{display:grid;grid-template-columns:1fr 1fr;}
 .tap-btn{padding:20px;font-family:'Orbitron',monospace;font-weight:900;font-size:1.1rem;letter-spacing:3px;border:none;cursor:pointer;transition:all .08s;text-transform:uppercase;position:relative;overflow:hidden;}
 .tap-btn:active{transform:scale(.96);}
 .tap-btn.p1{background:var(--p1);color:#040810;box-shadow:0 0 30px rgba(0,255,204,.3);}
@@ -546,12 +548,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="online-status" id="onlineStatus">⚡ ONLINE — OPPONENT CONNECTED</div>
     <div class="pc-indicator" id="pcIndicator">🤖 VS COMPUTER — <span id="diffLabel">EASY</span> — FREE PLAY</div>
     <div id="arena"></div>
-    <div class="tap-area">
-      <button class="tap-btn p1" id="tapBtn1" ontouchstart="tap(1,event)" onclick="tap(1,null)">
+    <div class="tap-area" id="tapArea">
+      <button class="tap-btn p1" id="tapBtn1" ontouchstart="handleMyTap(event)" onclick="handleMyTap(null)">
         <span class="tap-medal-badge" id="medalBadge1"></span>
         TAP!<span class="tap-count" id="tapCount1">0 TAPS</span>
       </button>
-      <button class="tap-btn p2" id="tapBtn2" ontouchstart="tap(2,event)" onclick="tap(2,null)">
+      <button class="tap-btn p2" id="tapBtn2" ontouchstart="handleOpponentTap(event)" onclick="handleOpponentTap(null)" style="display:none;">
         <span class="tap-medal-badge" id="medalBadge2"></span>
         TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>
       </button>
@@ -759,6 +761,8 @@ let pcGameMode      = 15;
 let timerInterval   = null;
 let aiInterval      = null;
 let syncInterval    = null;
+let powerInterval   = null; // NEW: track power-up spawn interval
+let countdownInterval = null; // NEW: track countdown interval
 let timeLeft        = 30;
 let cells           = [];
 let taps1           = 0, taps2 = 0;
@@ -770,6 +774,52 @@ let currentStreak   = 0;
 let equippedMedalId = localStorage.getItem('tapstar_equipped') || null;
 let currentStoreTab = 'premium';
 let currentLbPeriod = 'daily';
+
+// ═══════════════════════════════════════════════════════════
+//  FULL RESET — Called before every game starts
+//  This guarantees no stale state from previous games
+// ═══════════════════════════════════════════════════════════
+function fullResetGameState() {
+  // Clear ALL intervals with safety checks
+  if (timerInterval)     { clearInterval(timerInterval);     timerInterval = null; }
+  if (aiInterval)        { clearInterval(aiInterval);        aiInterval = null; }
+  if (syncInterval)      { clearInterval(syncInterval);      syncInterval = null; }
+  if (powerInterval)     { clearInterval(powerInterval);     powerInterval = null; }
+  
+  // Clear debounced sync timer
+  if (invadeCell._syncTimer) {
+    clearTimeout(invadeCell._syncTimer);
+    invadeCell._syncTimer = null;
+  }
+  
+  // Reset ALL game state flags
+  gameRunning = false;
+  countdownActive = false;
+  gameStartTime = null;
+  
+  // Reset counters
+  taps1 = 0;
+  taps2 = 0;
+  combo1 = 1;
+  combo2 = 1;
+  lastTap1 = 0;
+  lastTap2 = 0;
+  opponentScore = 0;
+  wasLosingMidgame = false;
+  timeLeft = 0;
+  
+  // Reset sync state
+  lastSyncTimestamp = 0;
+  cellTimestamps = {};
+  
+  // Clear grid and power-ups
+  cells = [];
+  powerCells.clear();
+  
+  // Reset UI counters
+  const timerEl = document.getElementById('timer');
+  if (timerEl) timerEl.classList.remove('urgent');
+}
 
 // Online PvP state
 let currentRoomCode = null;
@@ -1382,37 +1432,50 @@ async function createFirebaseRoom(code, p1uid, p2uid, stake, mode) {
 function applyOpponentGrid(oppGrid, oppTimestamp) {
   const oppNum = myPlayerNum === 1 ? 2 : 1;
   
-  // Only apply if this data is newer than what we last processed
+  // Skip stale data
   if (oppTimestamp <= lastSyncTimestamp) return;
   lastSyncTimestamp = oppTimestamp;
   
-  oppGrid.forEach((oppOwner, idx) => {
+  // Process each cell in opponent's view of the grid
+  oppGrid.forEach((oppSaysOwner, idx) => {
     if (idx >= cells.length) return;
     
     const cell = cells[idx];
-    const currentOwner = cell.owner;
+    const myCurrentOwner = cell.owner;
+    const myCaptureTime = cellTimestamps[idx] || 0;
     
-    // Rule 1: If opponent owns it in their data, they own it
-    if (oppOwner === oppNum) {
-      // Only override if we don't have a more recent capture
-      const myCaptureTime = cellTimestamps[idx] || 0;
-      if (oppTimestamp > myCaptureTime || currentOwner !== myPlayerNum) {
+    // Case 1: Opponent says THEY own this cell
+    if (oppSaysOwner === oppNum) {
+      // If I captured it MORE recently than this sync, keep my capture
+      if (myCaptureTime > oppTimestamp && myCurrentOwner === myPlayerNum) {
+        return; // Keep my capture
+      }
+      // Otherwise, accept opponent's ownership
+      if (myCurrentOwner !== oppNum) {
         cell.owner = oppNum;
         setCellVisual(cell, oppNum);
       }
     }
-    // Rule 2: If it's neutral in opponent's data but we think we own it,
-    // keep our ownership (we captured it more recently)
-    else if (oppOwner === 0 && currentOwner === oppNum) {
-      // Opponent lost this cell - update to neutral
-      cell.owner = 0;
-      cell.el.className = 'cell neutral';
-      cell.el.innerHTML = '';
+    // Case 2: Opponent says cell is neutral
+    else if (oppSaysOwner === 0) {
+      // If I own it locally (recent capture), keep it
+      if (myCurrentOwner === myPlayerNum) {
+        return;
+      }
+      // If I had it marked as opponent-owned, clear it
+      if (myCurrentOwner === oppNum) {
+        cell.owner = 0;
+        cell.el.className = 'cell neutral';
+        cell.el.innerHTML = '';
+      }
     }
-    // Rule 3: If opponent says WE own it, trust that
-    else if (oppOwner === myPlayerNum && currentOwner !== myPlayerNum) {
-      cell.owner = myPlayerNum;
-      setCellVisual(cell, myPlayerNum);
+    // Case 3: Opponent says I own it (their view of my captures)
+    else if (oppSaysOwner === myPlayerNum) {
+      // They're confirming I own it. If I don't have it marked, mark it.
+      if (myCurrentOwner !== myPlayerNum) {
+        cell.owner = myPlayerNum;
+        setCellVisual(cell, myPlayerNum);
+      }
     }
   });
   
@@ -1498,12 +1561,13 @@ function syncMyGrid() {
   // Build grid state array: [owner, owner, owner, ...]
   const gridState = cells.map(c => c.owner);
   
-  // Also sync taps and combo for display
+  // Since "me" always uses taps1/combo1 (regardless of actual player number),
+  // we send those as my stats
   const myData = {
     grid: gridState,
     score: cells.filter(c => c.owner === myPlayerNum).length,
-    taps: myPlayerNum === 1 ? taps1 : taps2,
-    combo: myPlayerNum === 1 ? combo1 : combo2,
+    taps: taps1,
+    combo: combo1,
     timestamp: Date.now()
   };
   
@@ -1514,6 +1578,12 @@ function syncMyGrid() {
 //  COUNTDOWN
 // ═══════════════════════════════════════════════════════════
 function startCountdown(name1, name2, onComplete) {
+  // Clear any existing countdown
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+  
   showScreen('screen-game');
   const overlay = document.getElementById('countdown-overlay');
   const numEl   = document.getElementById('countdownNum');
@@ -1525,10 +1595,11 @@ function startCountdown(name1, name2, onComplete) {
   let count = 3;
   numEl.textContent = count;
 
-  const iv = setInterval(() => {
+  countdownInterval = setInterval(() => {
     count--;
     if (count <= 0) {
-      clearInterval(iv);
+      clearInterval(countdownInterval);
+      countdownInterval = null;
       countdownActive = false;
       numEl.textContent = 'GO!';
       setTimeout(() => {
@@ -1537,7 +1608,6 @@ function startCountdown(name1, name2, onComplete) {
       }, 600);
     } else {
       numEl.textContent = count;
-      // Re-trigger animation
       numEl.style.animation = 'none';
       numEl.offsetHeight;
       numEl.style.animation = '';
@@ -1562,6 +1632,7 @@ function selectPCMode(el, time) {
 function startVsPC() {
   isVsPC    = true;
   isOnlinePvP = false;
+  myPlayerNum = 1; // CRITICAL: Human is always P1 in VS PC mode
   gameMode  = pcGameMode;
   stakeAmount = 0;
   opponentName = 'COMPUTER';
@@ -1573,43 +1644,8 @@ function startVsPC() {
 //  GAME SCREEN SETUP
 // ═══════════════════════════════════════════════════════════
 function startGameScreen(vsPC, onlinePvP) {
-  // ========== CLEANUP FROM PREVIOUS GAME ==========
-  // CRITICAL: Clear ALL intervals from previous game first
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-  if (aiInterval) {
-    clearInterval(aiInterval);
-    aiInterval = null;
-  }
-  if (syncInterval) {
-    clearInterval(syncInterval);
-    syncInterval = null;
-  }
-  
-  // Reset game state flags
-  gameRunning = false;
-  countdownActive = false;
-  
-  // Reset score tracking
-  taps1 = 0;
-  taps2 = 0;
-  combo1 = 1;
-  combo2 = 1;
-  lastTap1 = 0;
-  lastTap2 = 0;
-  opponentScore = 0;
-  wasLosingMidgame = false;
-  
-  // Reset timestamp tracking for sync
-  lastSyncTimestamp = 0;
-  cellTimestamps = {};
-  
-  // Clear the grid and power-ups
-  cells = [];
-  powerCells.clear();
-  
+  // ========== BULLETPROOF CLEANUP FROM PREVIOUS GAME ==========
+  fullResetGameState();
   // ========== END CLEANUP ==========
   
   isVsPC      = vsPC;
@@ -1625,6 +1661,7 @@ function startGameScreen(vsPC, onlinePvP) {
   document.getElementById('medalBadge1').textContent = myMedal?.emoji || '';
  
   if (vsPC) {
+    // VS PC mode: show BOTH buttons (your button + AI button)
     const aiMedals = ['🤖','👾','💀','🔴','💥'];
     document.getElementById('medalBadge2').textContent = aiMedals[Math.floor(Math.random()*aiMedals.length)];
     document.getElementById('pcIndicator').classList.add('show');
@@ -1634,17 +1671,19 @@ function startGameScreen(vsPC, onlinePvP) {
     document.getElementById('tapBtn2').innerHTML = `<span class="tap-medal-badge" id="medalBadge2">${document.getElementById('medalBadge2').textContent}</span>🤖 AUTO<span class="tap-count" id="tapCount2">0 TAPS</span>`;
     document.getElementById('tapBtn2').disabled = true;
     document.getElementById('tapBtn2').style.opacity = '.45';
+    document.getElementById('tapBtn2').style.display = 'block'; // Show AI button
+    document.getElementById('tapArea').classList.add('vs-pc');  // Side-by-side layout
     document.getElementById('displayStake').textContent = 'FREE';
     document.getElementById('displayPot').textContent   = 'FREE';
   } else {
+    // Online PvP mode: ONLY show the user's button (centered, full width)
     document.getElementById('medalBadge2').textContent = '';
     document.getElementById('pcIndicator').classList.remove('show');
     document.getElementById('onlineStatus').classList.add('show');
     document.getElementById('onlineStatus').textContent = '⚡ ONLINE — VS ' + opponentName;
     document.getElementById('p2label').textContent = opponentName;
-    document.getElementById('tapBtn2').innerHTML = `TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>`;
-    document.getElementById('tapBtn2').disabled  = true;  // P2 is remote — this is P1's button side
-    document.getElementById('tapBtn2').style.opacity = '.45';
+    document.getElementById('tapBtn2').style.display = 'none';  // HIDE opponent button completely
+    document.getElementById('tapArea').classList.remove('vs-pc'); // Full width layout
     document.getElementById('displayStake').textContent = stakeAmount.toFixed(2);
     document.getElementById('displayPot').textContent   = (stakeAmount * 2).toFixed(2);
     // Update room status to playing and clear old game data
@@ -1738,21 +1777,59 @@ function setCellVisual(cellObj, player) {
 // ═══════════════════════════════════════════════════════════
 //  TAP LOGIC
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  TAP LOGIC — Rewritten
+//  
+//  Key principle: The UI slots are fixed:
+//    - tapCount1, combo1, score1 = MY slot (always "YOU")
+//    - tapCount2, combo2, score2 = OPPONENT slot (always "OPPONENT")
+//  
+//  Regardless of whether I'm P1 or P2 in the room, I always see
+//  myself on the left and opponent on the right.
+// ═══════════════════════════════════════════════════════════
+
+// User tapped their OWN button — this is ALWAYS "me"
+function handleMyTap(e) {
+  if (e) e.preventDefault();
+  if (!gameRunning) return;
+  tap(myPlayerNum, e);
+}
+
+// Used only for local 2-player mode (not active in VS PC or Online PvP)
+function handleOpponentTap(e) {
+  if (e) e.preventDefault();
+  if (!gameRunning) return;
+  if (isVsPC || isOnlinePvP) return;
+  const other = myPlayerNum === 1 ? 2 : 1;
+  tap(other, e);
+}
+
 function tap(player, e) {
   if (e) e.preventDefault();
   if (!gameRunning) return;
-  if (player === 2 && (isVsPC || isOnlinePvP)) return;
+  
+  // In online PvP: only I (myPlayerNum) can tap
+  if (isOnlinePvP && player !== myPlayerNum) return;
+  
+  // In VS PC: only human (myPlayerNum=1) can tap
+  if (isVsPC && player !== myPlayerNum) return;
 
   const now = Date.now();
-  if (player === 1) {
+  const isMe = (player === myPlayerNum);
+  
+  if (isMe) {
+    // ALWAYS update the "my" UI slot (tapCount1, combo1), regardless of player number
     taps1++;
     document.getElementById('tapCount1').textContent = taps1 + ' TAPS';
     combo1 = (now - lastTap1 < 500) ? Math.min(combo1 + 1, 5) : 1;
     lastTap1 = now;
     document.getElementById('combo1').textContent = `YOU COMBO x${combo1}`;
     document.getElementById('combo1').classList.toggle('hot', combo1 >= 3);
-    for (let i = 0; i < combo1; i++) invadeCell(1);
+    
+    // Capture cells as MY player number
+    for (let i = 0; i < combo1; i++) invadeCell(myPlayerNum);
   } else {
+    // Opponent's tap (only used in local 2-player mode)
     taps2++;
     const tc2 = document.getElementById('tapCount2');
     if (tc2) tc2.textContent = taps2 + ' TAPS';
@@ -1760,14 +1837,15 @@ function tap(player, e) {
     lastTap2 = now;
     document.getElementById('combo2').textContent = `OPP COMBO x${combo2}`;
     document.getElementById('combo2').classList.toggle('hot', combo2 >= 3);
-    for (let i = 0; i < combo2; i++) invadeCell(2);
+    for (let i = 0; i < combo2; i++) invadeCell(player);
   }
   updateScores();
 }
 
 function invadeCell(player) {
-  // Skip if not my turn (only I can capture for myself)
-  if (player !== myPlayerNum && isOnlinePvP) return;
+  // In online PvP: only process my own cell captures (opponent's come via sync)
+  // In VS PC: AI captures via aiInvade, my captures via player=1 (since myPlayerNum=1 in vsPC)
+  if (isOnlinePvP && player !== myPlayerNum) return;
   
   const neutral = cells.filter(c => c.owner === 0);
   const enemy   = cells.filter(c => c.owner !== player && c.owner !== 0);
@@ -1789,13 +1867,14 @@ function invadeCell(player) {
   
   target.owner = player;
   
-  // Track timestamp for sync conflict resolution
+  // Track timestamp for sync conflict resolution — only for MY captures
   if (player === myPlayerNum) {
     cellTimestamps[idx] = Date.now();
   }
   
   setCellVisual(target, player);
   
+  // Visual flash: if I captured it, flash as "mine"; otherwise flash as "opponent"
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
   target.el.classList.add(flashClass);
   
@@ -1808,23 +1887,18 @@ function invadeCell(player) {
     if (target.el) target.el.classList.remove(flashClass); 
   }, 200);
   
-  // Sync and update scores for online PvP
+  // Update scores immediately so UI reflects capture
+  updateScores();
+  
+  // Sync to Firebase if online PvP and it was my capture
   if (isOnlinePvP && player === myPlayerNum) {
-    // Force immediate score update on screen
-    updateScores();
-    
-    // Debounced sync to Firebase
+    // Debounced sync to avoid flooding Firebase
     if (!invadeCell._syncTimer) {
       invadeCell._syncTimer = setTimeout(() => {
         syncMyGrid();
         invadeCell._syncTimer = null;
       }, 50);
     }
-  }
-  
-  // For VS PC mode, update scores immediately too
-  if (isVsPC) {
-    updateScores();
   }
 }
 
@@ -1883,21 +1957,44 @@ function updateScores() {
 //  TIMER
 // ═══════════════════════════════════════════════════════════
 function startTimer() {
+  // Safety: validate gameMode
+  if (!gameMode || gameMode <= 0) {
+    console.error('Invalid gameMode:', gameMode, '— defaulting to 30');
+    gameMode = isVsPC ? (pcGameMode || 30) : 30;
+  }
+  
+  // One more cleanup just to be safe — in case anything leaked through
+  if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
+  if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
+  if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
+  if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
+  
   timeLeft = gameMode;
   gameRunning = true;
-  gameStartTime = Date.now(); // Record when game started for sync validation
-  document.getElementById('timer').textContent = timeLeft;
-  document.getElementById('timer').classList.remove('urgent');
+  gameStartTime = Date.now();
+  
+  const timerEl = document.getElementById('timer');
+  if (timerEl) {
+    timerEl.textContent = timeLeft;
+    timerEl.classList.remove('urgent');
+  }
 
-  const pwrInt = setInterval(() => {
-    if (!gameRunning) { clearInterval(pwrInt); return; }
+  // Power-up spawner (tracked globally so it can be cleared reliably)
+  powerInterval = setInterval(() => {
+    if (!gameRunning) { 
+      if (powerInterval) { clearInterval(powerInterval); powerInterval = null; }
+      return; 
+    }
     if (Math.random() < 0.4) spawnPowerUp();
   }, 3000);
 
   if (isVsPC) {
-    const cfg = AI_CONFIG[difficulty];
+    const cfg = AI_CONFIG[difficulty] || AI_CONFIG.easy;
     aiInterval = setInterval(() => {
-      if (!gameRunning) { clearInterval(aiInterval); return; }
+      if (!gameRunning) { 
+        if (aiInterval) { clearInterval(aiInterval); aiInterval = null; }
+        return; 
+      }
       const doCombo  = Math.random() < cfg.comboChance;
       const count    = doCombo ? Math.floor(Math.random() * (cfg.comboMax - 1)) + 2 : 1;
       for (let i = 0; i < count; i++) aiInvade(cfg.stealChance, cfg.comboMax);
@@ -1908,20 +2005,30 @@ function startTimer() {
     }, cfg.interval);
   }
 
-if (isOnlinePvP) {
-    syncMyGrid(); // Sync immediately
-    syncInterval = setInterval(syncMyGrid, 100); // Faster sync - every 100ms
+  if (isOnlinePvP) {
+    syncMyGrid(); // Sync immediately on start
+    syncInterval = setInterval(syncMyGrid, 100); // Sync every 100ms
   }
 
+  // Main countdown timer
   timerInterval = setInterval(() => {
+    if (!gameRunning) {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      return;
+    }
     timeLeft--;
-    document.getElementById('timer').textContent = timeLeft;
-    if (timeLeft <= 10) document.getElementById('timer').classList.add('urgent');
+    const tEl = document.getElementById('timer');
+    if (tEl) {
+      tEl.textContent = timeLeft;
+      if (timeLeft <= 10) tEl.classList.add('urgent');
+    }
     if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      clearInterval(pwrInt);
-      if (aiInterval)   clearInterval(aiInterval);
-      if (syncInterval) clearInterval(syncInterval);
+      // Stop the timer first
+      if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
+      if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
+      if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
+      if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
+      gameRunning = false;
       endGame();
     }
   }, 1000);
@@ -1932,11 +2039,20 @@ if (isOnlinePvP) {
 // ═══════════════════════════════════════════════════════════
 function endGame() {
   gameRunning = false;
-  gameStartTime = null; // Clear game start time to prevent stale data application
-  const s1    = cells.filter(c => c.owner === 1).length;
-  const s2    = isOnlinePvP ? opponentScore : cells.filter(c => c.owner === 2).length;
+  gameStartTime = null;
+  
+  // Stop all intervals just to be completely sure
+  if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
+  if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
+  if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
+  if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
+  
+  // s1 = MY score (my cells), s2 = OPPONENT score (their cells)
+  const s1    = cells.filter(c => c.owner === myPlayerNum).length;
+  const oppNum = myPlayerNum === 1 ? 2 : 1;
+  const s2    = isOnlinePvP ? opponentScore : cells.filter(c => c.owner === oppNum).length;
   const total = cells.length;
-  const pct1  = s1 / total;
+  const pct1  = total > 0 ? s1 / total : 0;
 
   // Write final score if online
   if (isOnlinePvP && firebaseReady && currentRoomCode) {
@@ -2044,9 +2160,10 @@ function endGame() {
 function forceEndGame(room) {
   // Called when room status changes to 'finished' from Firebase
   if (!gameRunning) return;
-  clearInterval(timerInterval);
-  clearInterval(aiInterval);
-  clearInterval(syncInterval);
+  if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
+  if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
+  if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
+  if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
   gameRunning = false;
   endGame();
 }
@@ -2078,24 +2195,39 @@ function rematch() {
 
 function backToLobby() {
   document.getElementById('result-overlay').classList.remove('show');
-  clearInterval(timerInterval);
-  clearInterval(aiInterval);
-  clearInterval(syncInterval);
+  
+  // Full state reset using the bulletproof function
+  fullResetGameState();
+  
+  // Clean up Firebase listener
   if (roomRef) { roomRef.off(); roomRef = null; }
-  gameRunning = false;
-  countdownActive = false;
+  
+  // Reset mode flags
   isVsPC = false;
   isOnlinePvP = false;
   currentRoomCode = null;
-  document.getElementById('tapBtn2').innerHTML = 'TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>';
-  document.getElementById('tapBtn2').disabled  = false;
-  document.getElementById('tapBtn2').style.opacity = '1';
+  myPlayerNum = 1; // Reset to default
+  opponentName = '—';
+  
+  // Reset button UI for next game (show both, remove vs-pc class)
+  const tb2 = document.getElementById('tapBtn2');
+  if (tb2) {
+    tb2.innerHTML = 'TAP!<span class="tap-count" id="tapCount2">0 TAPS</span>';
+    tb2.disabled = false;
+    tb2.style.opacity = '1';
+    tb2.style.display = 'block';
+  }
+  const ta = document.getElementById('tapArea');
+  if (ta) ta.classList.remove('vs-pc');
+  
   document.getElementById('pcIndicator').classList.remove('show');
   document.getElementById('onlineStatus').classList.remove('show');
+  
   // Reset room screen UI
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
+  
   loadLobby();
   showScreen('screen-lobby');
 }
