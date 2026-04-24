@@ -785,6 +785,7 @@ function fullResetGameState() {
   if (aiInterval)        { clearInterval(aiInterval);        aiInterval = null; }
   if (syncInterval)      { clearInterval(syncInterval);      syncInterval = null; }
   if (powerInterval)     { clearInterval(powerInterval);     powerInterval = null; }
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
   
   // Clear debounced sync timer
   if (invadeCell._syncTimer) {
@@ -816,9 +817,36 @@ function fullResetGameState() {
   cells = [];
   powerCells.clear();
   
-  // Reset UI counters
-  const timerEl = document.getElementById('timer');
-  if (timerEl) timerEl.classList.remove('urgent');
+  // ========== EXPLICIT UI RESET ==========
+  // This is critical — without it, stale values from the previous game
+  // stay visible until initGrid/startTimer run. If those fail for any
+  // reason, the user sees a "frozen" screen with old data.
+  const score1El = document.getElementById('score1');
+  const score2El = document.getElementById('score2');
+  const timerEl  = document.getElementById('timer');
+  const tc1      = document.getElementById('tapCount1');
+  const tc2      = document.getElementById('tapCount2');
+  const c1       = document.getElementById('combo1');
+  const c2       = document.getElementById('combo2');
+  const tf       = document.getElementById('territoryFill');
+  const arena    = document.getElementById('arena');
+  
+  if (score1El) score1El.textContent = '0';
+  if (score2El) score2El.textContent = '0';
+  if (timerEl)  { 
+    timerEl.textContent = '—';
+    timerEl.classList.remove('urgent'); 
+  }
+  if (tc1)      tc1.textContent = '0 TAPS';
+  if (tc2)      tc2.textContent = '0 TAPS';
+  if (c1)       { c1.textContent = 'YOU COMBO x1'; c1.classList.remove('hot'); }
+  if (c2)       { c2.textContent = 'OPP COMBO x1'; c2.classList.remove('hot'); }
+  if (tf)       tf.style.width = '50%';
+  if (arena)    arena.innerHTML = ''; // Clear old cells from DOM
+  
+  // Hide any lingering overlays (in case of weird state)
+  const resultOv = document.getElementById('result-overlay');
+  if (resultOv) resultOv.classList.remove('show');
 }
 
 // Online PvP state
@@ -1630,9 +1658,12 @@ function selectPCMode(el, time) {
 }
 
 function startVsPC() {
+  // Ensure clean state before starting — critical when coming from another game
+  fullResetGameState();
+  
   isVsPC    = true;
   isOnlinePvP = false;
-  myPlayerNum = 1; // CRITICAL: Human is always P1 in VS PC mode
+  myPlayerNum = 1; // Human is always P1 in VS PC mode
   gameMode  = pcGameMode;
   stakeAmount = 0;
   opponentName = 'COMPUTER';
@@ -1661,18 +1692,17 @@ function startGameScreen(vsPC, onlinePvP) {
   document.getElementById('medalBadge1').textContent = myMedal?.emoji || '';
  
   if (vsPC) {
-    // VS PC mode: show BOTH buttons (your button + AI button)
+    // VS PC mode: ONLY show the user's button (centered, full width)
+    // The AI plays automatically via aiInterval — no button needed
     const aiMedals = ['🤖','👾','💀','🔴','💥'];
-    document.getElementById('medalBadge2').textContent = aiMedals[Math.floor(Math.random()*aiMedals.length)];
+    const aiEmoji = aiMedals[Math.floor(Math.random()*aiMedals.length)];
+    document.getElementById('medalBadge2').textContent = aiEmoji;
     document.getElementById('pcIndicator').classList.add('show');
     document.getElementById('onlineStatus').classList.remove('show');
     document.getElementById('diffLabel').textContent = difficulty.toUpperCase();
     document.getElementById('p2label').textContent = '🤖 COMPUTER';
-    document.getElementById('tapBtn2').innerHTML = `<span class="tap-medal-badge" id="medalBadge2">${document.getElementById('medalBadge2').textContent}</span>🤖 AUTO<span class="tap-count" id="tapCount2">0 TAPS</span>`;
-    document.getElementById('tapBtn2').disabled = true;
-    document.getElementById('tapBtn2').style.opacity = '.45';
-    document.getElementById('tapBtn2').style.display = 'block'; // Show AI button
-    document.getElementById('tapArea').classList.add('vs-pc');  // Side-by-side layout
+    document.getElementById('tapBtn2').style.display = 'none';  // HIDE AI button — single button layout
+    document.getElementById('tapArea').classList.remove('vs-pc'); // Full width layout
     document.getElementById('displayStake').textContent = 'FREE';
     document.getElementById('displayPot').textContent   = 'FREE';
   } else {
@@ -2183,6 +2213,10 @@ function checkAchievements(stats) {
 // ═══════════════════════════════════════════════════════════
 function rematch() {
   document.getElementById('result-overlay').classList.remove('show');
+  
+  // Belt-and-suspenders: ensure clean state before starting new game
+  fullResetGameState();
+  
   if (isVsPC) {
     startVsPC();
   } else if (isOnlinePvP) {
