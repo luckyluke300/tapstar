@@ -663,12 +663,32 @@ let firebaseReady = false;
 let auth, db, firestore;
 let lastSyncTimestamp = 0;
 let cellTimestamps = {}; // Track when each cell was captured
+
+// ═══════════════════════════════════════════════════════════
+//  CLOCK SYNC — Shared time across both players via Firebase
+//  
+//  Date.now() returns each device's local clock, which can differ
+//  by seconds between phones/computers. That made sync conflict
+//  resolution unfair: whoever's clock was ahead always "won."
+//  
+//  Firebase exposes its server clock offset at .info/serverTimeOffset.
+//  Both devices subscribe to it, so sharedNow() returns approximately
+//  the same value on both ends regardless of local clock drift.
+// ═══════════════════════════════════════════════════════════
+let clockOffset = 0;
+function sharedNow() { return Date.now() + clockOffset; }
+
 try {
   firebase.initializeApp(firebaseConfig);
   auth      = firebase.auth();
   db        = firebase.database();
   firestore = firebase.firestore();
   firebaseReady = true;
+  // Subscribe to server clock offset — keeps clockOffset accurate throughout the session
+  db.ref('.info/serverTimeOffset').on('value', snap => {
+    const v = snap.val();
+    if (typeof v === 'number') clockOffset = v;
+  });
 } catch(e) {
   console.warn('Firebase init failed — running in offline mode', e);
 }
@@ -1616,7 +1636,7 @@ function syncMyGrid() {
     taps: taps1,
     combo: combo1,
     medal: equippedMedalId || null, // Share my medal so opponent can display it on my cells
-    timestamp: Date.now()
+    timestamp: sharedNow() // Use shared (server-aligned) clock so both devices' timestamps are comparable
   };
   
   db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}`).update(myData).catch(() => {});
@@ -1755,14 +1775,14 @@ function startGameScreen(vsPC, onlinePvP) {
           taps: 0,
           combo: 1,
           medal: equippedMedalId || null, // Sync my medal to opponent
-          timestamp: Date.now()
+          timestamp: sharedNow()
         },
         [`p${oppPlayerNum}`]: {
           grid: null,
           score: 0,
           taps: 0,
           combo: 1,
-          timestamp: Date.now()
+          timestamp: sharedNow()
         }
       };
       db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
@@ -1879,13 +1899,14 @@ function tap(player, e) {
     // ALWAYS update the "my" UI slot (tapCount1, combo1), regardless of player number
     taps1++;
     document.getElementById('tapCount1').textContent = taps1 + ' TAPS';
+    // Combo is now PURELY VISUAL — does not multiply invasions
     combo1 = (now - lastTap1 < 500) ? Math.min(combo1 + 1, 5) : 1;
     lastTap1 = now;
     document.getElementById('combo1').textContent = `YOU COMBO x${combo1}`;
     document.getElementById('combo1').classList.toggle('hot', combo1 >= 3);
     
-    // Capture cells as MY player number
-    for (let i = 0; i < combo1; i++) invadeCell(myPlayerNum);
+    // 1 tap = 1 invasion attempt — strict fairness rule
+    invadeCell(myPlayerNum);
   } else {
     // Opponent's tap (only used in local 2-player mode)
     taps2++;
@@ -1895,7 +1916,7 @@ function tap(player, e) {
     lastTap2 = now;
     document.getElementById('combo2').textContent = `OPP COMBO x${combo2}`;
     document.getElementById('combo2').classList.toggle('hot', combo2 >= 3);
-    for (let i = 0; i < combo2; i++) invadeCell(player);
+    invadeCell(player);
   }
   updateScores();
 }
@@ -1926,8 +1947,9 @@ function invadeCell(player) {
   target.owner = player;
   
   // Track timestamp for sync conflict resolution — only for MY captures
+  // Use sharedNow() so both devices' timestamps are in the same coordinate space
   if (player === myPlayerNum) {
-    cellTimestamps[idx] = Date.now();
+    cellTimestamps[idx] = sharedNow();
   }
   
   setCellVisual(target, player);
@@ -1936,9 +1958,10 @@ function invadeCell(player) {
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
   target.el.classList.add(flashClass);
   
+  // Power-up cells just visually clear when captured — no bonus invasions.
+  // Strict "1 tap = 1 cell" rule means power-ups can't grant extra captures.
   if (isPower) {
     powerCells.delete(idx);
-    for (let b = 0; b < 2; b++) invadeCell(player);
   }
   
   setTimeout(() => { 
@@ -1978,9 +2001,9 @@ function aiInvade(stealChance, comboMax) {
   setCellVisual(target, 2);
   // AI is always opponent, so use flash-p2
   target.el.classList.add('flash-p2');
+  // Power-up cells just visually clear — no bonus invasions for AI either
   if (isPower) {
     powerCells.delete(idx);
-    for (let b = 0; b < 2; b++) aiInvade(stealChance, comboMax);
   }
   setTimeout(() => { if (target.el) target.el.classList.remove('flash-p2'); }, 200);
 }
@@ -2037,14 +2060,9 @@ function startTimer() {
     timerEl.classList.remove('urgent');
   }
 
-  // Power-up spawner (tracked globally so it can be cleared reliably)
-  powerInterval = setInterval(() => {
-    if (!gameRunning) { 
-      if (powerInterval) { clearInterval(powerInterval); powerInterval = null; }
-      return; 
-    }
-    if (Math.random() < 0.4) spawnPowerUp();
-  }, 3000);
+  // Power-up spawning is disabled — strict "1 tap = 1 cell" rule means
+  // power-ups can't grant bonus captures, so spawning them would be misleading.
+  // (powerInterval is left unset; fullResetGameState handles cleanup.)
 
   if (isVsPC) {
     const cfg = AI_CONFIG[difficulty] || AI_CONFIG.easy;
@@ -2053,9 +2071,9 @@ function startTimer() {
         if (aiInterval) { clearInterval(aiInterval); aiInterval = null; }
         return; 
       }
-      const doCombo  = Math.random() < cfg.comboChance;
-      const count    = doCombo ? Math.floor(Math.random() * (cfg.comboMax - 1)) + 2 : 1;
-      for (let i = 0; i < count; i++) aiInvade(cfg.stealChance, cfg.comboMax);
+      // 1 AI "tap" = 1 invasion — same fairness rule as the player.
+      // Difficulty is set purely by the interval (taps per second).
+      aiInvade(cfg.stealChance, cfg.comboMax);
       taps2++;
       const tc2 = document.getElementById('tapCount2');
       if (tc2) tc2.textContent = taps2 + ' TAPS';
