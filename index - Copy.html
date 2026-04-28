@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="tapstar-wallet.css">
+
 <style>
 :root{--p1:#00ffcc;--p2:#ff3366;--bg:#040810;--panel:#080f1a;--border:#1a2a3a;--gold:#ffd700;--dim:#1a2535;--text:#c8d8e8;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -700,8 +700,7 @@ const PROTOCOL_FEE        = 0.05;
 const POLYGON_CHAIN_ID    = "0x89";
 const POLYGON_TESTNET_ID  = "0x13882";
 const GRID_SIZE           = 12;
-const QUICK_MATCH_STAKE   = 0.001;  // 0.001 ETH per side
-window.QUICK_MATCH_STAKE  = QUICK_MATCH_STAKE;  // expose to wallet UI
+const QUICK_MATCH_STAKE   = 1.0;
 const SYNC_INTERVAL_MS    = 400;
 
 const AI_CONFIG = {
@@ -921,7 +920,7 @@ function showScreen(id) {
 // ═══════════════════════════════════════════════════════════
 //  WALLET CONNECTION
 // ═══════════════════════════════════════════════════════════
-/* let walletListenersSet = false; // Flag to ensure listeners are set only once
+let walletListenersSet = false; // Flag to ensure listeners are set only once
 
 async function connectWalletAuth() {
   walletAddress = await doConnectWallet();
@@ -1020,7 +1019,7 @@ function updateLobbyWalletUI() {
   if (balEl) balEl.textContent = walletBalance.toFixed(4) + ' POL';
   if (inlineBtn) inlineBtn.style.display = 'none';
 }
-*/
+
 // ═══════════════════════════════════════════════════════════
 //  AUTH CONNECTION
 // ═══════════════════════════════════════════════════════════
@@ -2478,8 +2477,5 @@ setTimeout(() => {
   if (!getOwnedMedals().length) checkAchievements(getStats());
 }, 500);
 </script>
-<!-- Phase 2: WalletConnect + on-chain integration -->
-<script type="module" src="tapstar-wallet.js"></script>
-<script src="tapstar-wallet-ui.js"></script>
 </body>
 </html>
