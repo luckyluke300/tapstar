@@ -330,7 +330,44 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </style>
 </head>
 <body>
-
+<div id="ts-beta-banner" style="
+  position:fixed;top:0;left:0;right:0;
+  background:#1a0a1a;
+  border-bottom:1px solid #ff3366;
+  color:#ffb3c8;
+  font-family:'Share Tech Mono',monospace;
+  font-size:.72rem;letter-spacing:1.5px;
+  padding:10px 16px;
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  z-index:99999;
+  text-align:center;
+  line-height:1.5;
+">
+  <span style="color:#ff3366;font-weight:bold;">⚠ BETA</span>
+  <span>
+    TAPSTAR is in active development · running on
+    <span style="color:#ffd700;">SEPOLIA TESTNET</span> ·
+    do not deposit real money · matches do not pay out yet
+  </span>
+  <button onclick="document.getElementById('ts-beta-banner').style.display='none'" style="
+    background:transparent;
+    border:1px solid #ff3366;
+    color:#ff3366;
+    font-family:inherit;font-size:.6rem;letter-spacing:2px;
+    padding:4px 10px;cursor:pointer;
+    transition:all .15s;
+    margin-left:auto;
+  " onmouseover="this.style.background='rgba(255,51,102,.15)'" onmouseout="this.style.background='transparent'">DISMISS</button>
+</div>
+<style>
+  /* Push the rest of the page down so the banner doesn't overlap the lobby header */
+  body { padding-top: 44px !important; }
+  @media (max-width: 600px) {
+    #ts-beta-banner { font-size: .62rem; padding: 8px 10px; gap: 8px; }
+    #ts-beta-banner span:nth-of-type(2) { line-height: 1.4; }
+    body { padding-top: 64px !important; }
+  }
+</style>
 <!-- ═══════════════════ AUTH SCREEN ═══════════════════ -->
 <div id="screen-auth" class="screen active">
   <div class="auth-wrap">

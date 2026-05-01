@@ -1,0 +1,170 @@
+/* ═══════════════════════════════════════════════════════════════════
+     TAPSTAR · WALLET STYLES (Phase 2)
+     Adds new wallet card, deposit/withdraw modal, and tx toast.
+     Matches existing cyan/black/gold aesthetic.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── New wallet card (replaces .wallet-row) ─────────────────────── */
+.ts-wallet-card{
+  background:rgba(255,215,0,.04);
+  border:1px solid rgba(255,215,0,.25);
+  padding:14px 18px;
+  display:grid;
+  grid-template-columns:1fr 1fr auto;
+  gap:14px;
+  align-items:center;
+  font-family:'Share Tech Mono',monospace;
+}
+.ts-wallet-card.disconnected{
+  grid-template-columns:1fr auto;
+}
+.ts-wallet-row{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.ts-wallet-label{
+  font-size:.55rem;letter-spacing:3px;color:#4a6a8a;text-transform:uppercase;
+}
+.ts-wallet-value{
+  font-family:'Orbitron',monospace;font-size:.95rem;font-weight:700;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ts-wallet-value.gold{color:var(--gold);}
+.ts-wallet-value.cyan{color:var(--p1);}
+.ts-wallet-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.ts-walbtn{
+  background:transparent;
+  border:1px solid var(--p1);
+  color:var(--p1);
+  font-family:'Share Tech Mono',monospace;
+  font-size:.65rem;letter-spacing:2px;
+  padding:6px 12px;cursor:pointer;
+  transition:all .15s;
+  text-transform:uppercase;
+}
+.ts-walbtn:hover{background:rgba(0,255,204,.1);}
+.ts-walbtn.gold{border-color:var(--gold);color:var(--gold);}
+.ts-walbtn.gold:hover{background:rgba(255,215,0,.1);}
+.ts-walbtn.danger{border-color:var(--p2);color:var(--p2);}
+.ts-walbtn.danger:hover{background:rgba(255,51,102,.1);}
+.ts-walbtn.connect{
+  border-color:#ff6600;color:#ff6600;font-size:.7rem;padding:8px 16px;
+}
+.ts-walbtn.connect:hover{background:rgba(255,102,0,.1);}
+.ts-walbtn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* responsive */
+@media (max-width:600px){
+  .ts-wallet-card{grid-template-columns:1fr 1fr;}
+  .ts-wallet-actions{grid-column:1/-1;justify-content:stretch;}
+  .ts-walbtn{flex:1;}
+}
+
+/* ─── Address pill in lobby header ──────────────────────────────── */
+.hbtn.ts-addr{
+  border-color:var(--gold);color:var(--gold);
+  font-family:'Share Tech Mono',monospace;
+}
+
+/* ─── Network warning banner ────────────────────────────────────── */
+.ts-net-warn{
+  background:rgba(255,51,102,.12);
+  border:1px solid var(--p2);
+  padding:10px 16px;
+  font-size:.72rem;letter-spacing:2px;
+  color:var(--p2);
+  display:none;
+  text-align:center;
+}
+.ts-net-warn.show{display:block;}
+
+/* ─── Modal (deposit / withdraw) ─────────────────────────────────── */
+.ts-modal{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.85);
+  display:none;align-items:center;justify-content:center;
+  z-index:10000;
+  padding:20px;
+  backdrop-filter:blur(4px);
+}
+.ts-modal.show{display:flex;}
+.ts-modal-box{
+  width:100%;max-width:420px;
+  background:var(--panel);
+  border:1px solid var(--p1);
+  padding:28px 24px;
+  display:flex;flex-direction:column;gap:18px;
+  box-shadow:0 0 40px rgba(0,255,204,.15);
+}
+.ts-modal-title{
+  font-family:'Orbitron',monospace;
+  font-size:1rem;letter-spacing:3px;
+  color:var(--p1);text-align:center;
+}
+.ts-modal-sub{
+  font-size:.65rem;letter-spacing:1.5px;color:#4a6a8a;
+  text-align:center;line-height:1.6;
+}
+.ts-modal-balances{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  background:rgba(0,255,204,.04);
+  border:1px solid var(--border);
+  padding:10px;
+}
+.ts-mb-cell{display:flex;flex-direction:column;gap:2px;text-align:center;}
+.ts-mb-label{font-size:.55rem;letter-spacing:2px;color:#4a6a8a;}
+.ts-mb-val{font-family:'Orbitron',monospace;font-size:.9rem;color:#fff;}
+.ts-modal-input{
+  background:transparent;
+  border:1px solid var(--border);
+  color:#fff;
+  font-family:'Share Tech Mono',monospace;
+  font-size:1.1rem;letter-spacing:2px;
+  padding:14px 16px;
+  outline:none;
+  width:100%;
+  text-align:center;
+  transition:border-color .2s;
+}
+.ts-modal-input:focus{border-color:var(--p1);}
+.ts-modal-presets{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.ts-preset{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'Share Tech Mono',monospace;
+  font-size:.65rem;letter-spacing:1px;
+  padding:6px 10px;cursor:pointer;
+  transition:all .15s;
+}
+.ts-preset:hover{border-color:var(--p1);color:var(--p1);}
+.ts-preset.active{border-color:var(--p1);color:var(--p1);background:rgba(0,255,204,.1);}
+.ts-modal-error{
+  font-size:.65rem;color:var(--p2);
+  letter-spacing:1px;text-align:center;min-height:16px;
+}
+.ts-modal-actions{display:flex;gap:10px;}
+.ts-modal-actions .ts-walbtn{flex:1;padding:12px 14px;font-size:.75rem;}
+
+/* ─── Tx toast (shows confirmation + explorer link) ──────────────── */
+.ts-tx-toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--p1);
+  padding:12px 20px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:.72rem;letter-spacing:1.5px;
+  color:var(--text);
+  display:none;align-items:center;gap:10px;
+  z-index:10001;
+  max-width:90vw;
+}
+.ts-tx-toast.show{display:flex;}
+.ts-tx-toast a{color:var(--p1);text-decoration:underline;}
+.ts-tx-toast.success{border-color:var(--gold);}
+.ts-tx-toast.error{border-color:var(--p2);}
+
+/* ─── Hand-balance hint near Quick Match button ──────────────────── */
+.ts-stake-hint{
+  font-size:.6rem;letter-spacing:1.5px;
+  color:#4a6a8a;text-align:center;
+  margin-top:-6px;
+}
+.ts-stake-hint.warn{color:#ff6600;}
+.ts-stake-hint.ok{color:var(--p1);}
