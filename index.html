@@ -1301,7 +1301,12 @@ async function startQuickMatch() {
       stakeAmount     = QUICK_MATCH_STAKE;
       gameMode        = 30;
       await createFirebaseRoom(matchedRoomCode, matched.uid, uid, stakeAmount, gameMode);
-      await db.ref(`player_match/${matched.uid}`).set({ roomCode: matchedRoomCode, opponent: username });
+      // Phase 3: pass our wallet to the host via player_match so they can patch their p1 entry
+      await db.ref(`player_match/${matched.uid}`).set({
+        roomCode: matchedRoomCode,
+        opponent: username,
+        opponentWallet: window.TapStarWallet?.getAddress() || null
+      });
       subscribeToRoom(matchedRoomCode);
       document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
       startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
@@ -1310,10 +1315,10 @@ async function startQuickMatch() {
       mmQueueRef = queueRef.child(uid);
       const matchListener = db.ref(`player_match/${uid}`);
       
-      matchListener.on('value', snap => {
+     matchListener.on('value', async snap => {
         if (!snap.val()) return;
         clearTimeout(timeoutId);
-        const { roomCode, opponent } = snap.val();
+        const { roomCode, opponent, opponentWallet } = snap.val();
         matchListener.off();
         matchListener.remove();
         queueRef.child(uid).remove();
@@ -1321,6 +1326,13 @@ async function startQuickMatch() {
         myPlayerNum    = 1;
         stakeAmount    = QUICK_MATCH_STAKE;
         currentRoomCode = roomCode;
+        // Phase 3: stamp my wallet onto p1, since the joiner created the room with us as p1
+        try {
+          await db.ref(`rooms/${roomCode}/p1`).update({
+            walletAddress: window.TapStarWallet?.getAddress() || null,
+            username: currentUser.username
+          });
+        } catch {}
         subscribeToRoom(roomCode);
         document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
         startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
@@ -1426,8 +1438,12 @@ async function joinPrivateRoom() {
     opponentName    = room.p1.username;
 
     // Join the room
-    await db.ref(`rooms/${code}/p2`).set({ uid: currentUser.uid, username: currentUser.username });
-
+await db.ref(`rooms/${code}/p2`).set({
+      uid: currentUser.uid,
+      username: currentUser.username,
+      walletAddress: window.TapStarWallet?.getAddress() || null,
+      score: 0
+    });
     document.getElementById('room-choice').style.display  = 'none';
     document.getElementById('room-joined').style.display  = 'block';
     document.getElementById('roomJoinedPlayersList').innerHTML =
@@ -1515,9 +1531,26 @@ function forceCleanup() {
 //  FIREBASE ROOM MANAGEMENT
 // ═══════════════════════════════════════════════════════════
 async function createFirebaseRoom(code, p1uid, p2uid, stake, mode) {
+  // Phase 3: stamp wallet addresses into the room so the signer Worker
+  // knows where to pay. Only this client's own address can be set here —
+  // p2's address is added when they actually join.
+  const myWallet = window.TapStarWallet?.getAddress() || null;
+  const isP1Me = p1uid === currentUser?.uid;
+  const isP2Me = p2uid === currentUser?.uid;
+
   const roomData = {
-    p1: { uid: p1uid, username: p1uid === currentUser?.uid ? currentUser.username : '—', score: 0 },
-    p2: p2uid ? { uid: p2uid, username: p2uid === currentUser?.uid ? currentUser.username : '—', score: 0 } : null,
+    p1: {
+      uid: p1uid,
+      username: isP1Me ? currentUser.username : '—',
+      walletAddress: isP1Me ? myWallet : null,
+      score: 0
+    },
+    p2: p2uid ? {
+      uid: p2uid,
+      username: isP2Me ? currentUser.username : '—',
+      walletAddress: isP2Me ? myWallet : null,
+      score: 0
+    } : null,
     stakeAmount: stake,
     gameMode: mode,
     status: 'waiting',
@@ -2168,14 +2201,20 @@ function endGame() {
   const total = cells.length;
   const pct1  = total > 0 ? s1 / total : 0;
 
-  // Write final score if online
-  if (isOnlinePvP && firebaseReady && currentRoomCode) {
-    const myKey = `rooms/${currentRoomCode}/p${myPlayerNum}/score`;
-    db.ref(myKey).set(s1).catch(() => {});
-    // If we're player 1, mark the game finished
-    if (myPlayerNum === 1) {
-      db.ref(`rooms/${currentRoomCode}`).update({ status: 'finished' }).catch(() => {});
-    }
+  // Phase 3: trigger on-chain settlement for online PvP matches.
+  // The settle module writes the new finalReport schema (myScore + oppScore)
+  // and orchestrates contract calls. Fire-and-forget — we update the result
+  // screen reactively via onUpdate.
+  if (isOnlinePvP && firebaseReady && currentRoomCode && window.TapStarSettle) {
+    window.TapStarSettle.handleMatchEnd({
+      roomCode:    currentRoomCode,
+      myPlayerNum: myPlayerNum,
+      isHost:      myPlayerNum === 1,
+      myScore:     s1,
+      oppScore:    s2,
+      stakeEth:    stakeAmount,
+      onUpdate:    updateSettlementUI
+    });
   }
 
   let winnerNum = null;
@@ -2235,19 +2274,25 @@ function endGame() {
   const newlyUnlocked = checkAchievements(stats);
 
   // Payout
+ // Phase 3: Payout — show pending state for online PvP, the settle module
+  // updates this in real time via updateSettlementUI(). VS Computer is unchanged.
   if (isVsPC) {
     document.getElementById('payoutAmount').textContent  = 'FREE PRACTICE';
     document.getElementById('payoutAmount').style.fontSize = '1.2rem';
     document.getElementById('payoutLabel').textContent  = difficulty.toUpperCase() + ' DIFFICULTY';
-    document.getElementById('blockchainNote').textContent = 'No POL at stake. Switch to PvP to win real POL!';
+    document.getElementById('blockchainNote').textContent = 'No ETH at stake. Switch to PvP to win real ETH!';
+  } else if (isOnlinePvP) {
+    // Initial state — settle module overrides this as it progresses
+    document.getElementById('payoutAmount').textContent    = '⏳ SETTLING...';
+    document.getElementById('payoutAmount').style.fontSize = '1.5rem';
+    document.getElementById('payoutLabel').textContent     = 'WAITING FOR ON-CHAIN CONFIRMATION';
+    document.getElementById('blockchainNote').textContent  = 'Match result is being signed and settled on-chain. This usually takes 10–30 seconds.';
   } else {
-    const pot = stakeAmount * 2, pay = pot * (1 - PROTOCOL_FEE), fee = pot * PROTOCOL_FEE;
-    document.getElementById('payoutAmount').textContent    = winnerNum === 1 ? `+${pay.toFixed(4)} POL` : `-${stakeAmount.toFixed(4)} POL`;
-    document.getElementById('payoutAmount').style.fontSize = '2rem';
-    document.getElementById('payoutLabel').textContent     = winnerNum === 1 ? 'WINNER PAYOUT' : 'YOU LOST';
-    document.getElementById('blockchainNote').textContent  = 'Smart contract auto-processes payouts. Your wallet will receive funds within 1 confirmation.';
+    // Local 2P or other non-online mode — keep simple
+    document.getElementById('payoutAmount').textContent    = winnerNum === 1 ? 'YOU WIN' : winnerNum === 2 ? 'YOU LOSE' : 'DRAW';
+    document.getElementById('payoutLabel').textContent     = 'LOCAL MATCH';
+    document.getElementById('blockchainNote').textContent  = 'Local matches do not affect your on-chain Hand balance.';
   }
-
   // Unlocked medals
   const ub = document.getElementById('unlockBox');
   const um = document.getElementById('unlockMedals');
@@ -2269,6 +2314,72 @@ function endGame() {
   if (roomRef) { roomRef.off(); roomRef = null; }
 
   document.getElementById('result-overlay').classList.add('show');
+}
+// ═══════════════════════════════════════════════════════════════
+//   PHASE 3 · Settlement UI updater
+//   Called by tapstar-settle.js as the settlement progresses
+// ═══════════════════════════════════════════════════════════════
+function updateSettlementUI(status, data) {
+  const amt   = document.getElementById('payoutAmount');
+  const label = document.getElementById('payoutLabel');
+  const note  = document.getElementById('blockchainNote');
+  if (!amt || !label || !note) return;
+
+  switch (status) {
+    case 'writing':
+      amt.textContent = '⏳ SETTLING...';
+      label.textContent = 'SUBMITTING MATCH RESULT';
+      note.textContent = 'Posting your final score…';
+      break;
+    case 'waiting_other':
+      amt.textContent = '⏳ SETTLING...';
+      label.textContent = 'WAITING FOR OPPONENT';
+      note.textContent = (data?.reason || 'Awaiting opponent\'s confirmation') + '. Up to 5 minutes — auto-refunds if they never report.';
+      break;
+    case 'opponent_settling':
+      amt.textContent = `−${stakeAmount.toFixed(4)} ETH`;
+      label.textContent = 'YOU LOST';
+      note.textContent = 'Winner is settling on-chain. Your Hand updates automatically when confirmed.';
+      break;
+    case 'opponent_refunding':
+      amt.textContent = '↺ REFUNDING';
+      label.textContent = data?.reason ? 'REFUND · ' + String(data.reason).toUpperCase() : 'REFUND';
+      note.textContent = 'Other player is submitting the refund. Your stake will be unlocked.';
+      break;
+    case 'signing':
+    case 'submitting':
+      amt.textContent = '⏳ CONFIRMING...';
+      label.textContent = data?.kind === 'refund' ? 'REFUNDING ON-CHAIN' : 'SETTLING ON-CHAIN';
+      note.textContent = 'Confirm the transaction in your wallet. ~12 seconds for finality.';
+      break;
+    case 'confirmed': {
+      const payout = data?.payoutEth ?? 0;
+      amt.textContent = `+${payout.toFixed(4)} ETH`;
+      amt.style.fontSize = '2rem';
+      label.textContent = 'WINNER PAYOUT · CONFIRMED';
+      const link = data?.txHash
+        ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>`
+        : '';
+      note.innerHTML = 'Your Hand has been credited.' + link;
+      break;
+    }
+    case 'refunded': {
+      amt.textContent = '↺ REFUNDED';
+      amt.style.fontSize = '1.5rem';
+      label.textContent = data?.reason ? 'REFUND · ' + String(data.reason).toUpperCase() : 'REFUND';
+      const link = data?.txHash
+        ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>`
+        : '';
+      note.innerHTML = 'Both stakes were unlocked. No fee was taken.' + link;
+      break;
+    }
+    case 'error':
+      amt.textContent = '⚠ ERROR';
+      amt.style.fontSize = '1.2rem';
+      label.textContent = 'SETTLEMENT FAILED';
+      note.textContent = (data?.reason || 'Unknown error') + ' · Your stake is not lost — try refreshing or contact support.';
+      break;
+  }
 }
 
 function forceEndGame(room) {
@@ -2518,5 +2629,6 @@ setTimeout(() => {
 <!-- Phase 2: WalletConnect + on-chain integration -->
 <script type="module" src="tapstar-wallet.js"></script>
 <script src="tapstar-wallet-ui.js"></script>
+<script src="tapstar-settle.js"></script>
 </body>
 </html>
