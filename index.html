@@ -1267,7 +1267,13 @@ async function startQuickMatch() {
   const uid      = currentUser.uid;
   const username = currentUser.username;
   const queueRef = db.ref('matchmaking');
-
+// Phase 3 fix: refuse to queue without a connected wallet
+const myWallet = window.TapStarWallet?.getAddress();
+if (!myWallet) {
+  showToast('Connect your wallet first');
+  cancelMatchmaking();
+  return;
+}
   // ADD TIMEOUT - cancel after 30 seconds
   const timeoutId = setTimeout(() => {
     cancelMatchmaking();
