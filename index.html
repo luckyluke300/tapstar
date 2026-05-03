@@ -1855,25 +1855,24 @@ function startGameScreen(vsPC, onlinePvP) {
     setText('displayPot', (stakeAmount * 2).toFixed(2));
     // Update room status to playing and clear old game data
     if (firebaseReady && currentRoomCode) {
-      // Clear old player data to prevent stale grid from previous game
+      // Clear old per-game player data WITHOUT nuking identity fields
+      // (uid, username, walletAddress, score baseline). Use slash-paths so
+      // .update() targets specific nested fields instead of replacing whole subtrees.
       const oppPlayerNum = myPlayerNum === 1 ? 2 : 1;
+      const ts = sharedNow();
       const clearData = {
         status: 'playing',
-        [`p${myPlayerNum}`]: {
-          grid: null,
-          score: 0,
-          taps: 0,
-          combo: 1,
-          medal: equippedMedalId || null, // Sync my medal to opponent
-          timestamp: sharedNow()
-        },
-        [`p${oppPlayerNum}`]: {
-          grid: null,
-          score: 0,
-          taps: 0,
-          combo: 1,
-          timestamp: sharedNow()
-        }
+        [`p${myPlayerNum}/grid`]:      null,
+        [`p${myPlayerNum}/score`]:     0,
+        [`p${myPlayerNum}/taps`]:      0,
+        [`p${myPlayerNum}/combo`]:     1,
+        [`p${myPlayerNum}/medal`]:     equippedMedalId || null,
+        [`p${myPlayerNum}/timestamp`]: ts,
+        [`p${oppPlayerNum}/grid`]:      null,
+        [`p${oppPlayerNum}/score`]:     0,
+        [`p${oppPlayerNum}/taps`]:      0,
+        [`p${oppPlayerNum}/combo`]:     1,
+        [`p${oppPlayerNum}/timestamp`]: ts
       };
       db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
     }
