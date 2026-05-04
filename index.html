@@ -2141,8 +2141,7 @@ function startTimer() {
   
   timeLeft = gameMode;
   gameRunning = true;
-  gameStartTime = Date.now();
-  
+gameStartTime = (typeof sharedNow === 'function') ? sharedNow() : Date.now();  
   const timerEl = document.getElementById('timer');
   if (timerEl) {
     timerEl.textContent = timeLeft;
@@ -2194,7 +2193,13 @@ function startTimer() {
       if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
       if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
       gameRunning = false;
+      // Phase 3: host marks match finished IMMEDIATELY so opponent's client
+      // ends in lockstep, regardless of their local clock drift.
+      if (isOnlinePvP && firebaseReady && currentRoomCode && myPlayerNum === 1) {
+        try { db.ref(`rooms/${currentRoomCode}`).update({ status: 'finished' }); } catch {}
+      }
       endGame();
+    }
     }
   }, 1000);
 }
@@ -2202,9 +2207,15 @@ function startTimer() {
 // ═══════════════════════════════════════════════════════════
 //  END GAME
 // ═══════════════════════════════════════════════════════════
-function endGame() {
+async function endGame() {
   gameRunning = false;
   gameStartTime = null;
+
+  // Phase 3: brief wait so any in-flight opponent grid updates can land
+  // before we compute final scores.
+  if (isOnlinePvP) {
+    await new Promise(r => setTimeout(r, 700));
+  }
   
   // Stop all intervals just to be completely sure
   if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
