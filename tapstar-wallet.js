@@ -65,9 +65,13 @@ const ABI = [
   'function maxStake() external view returns (uint256)',
   'function houseFeeBps() external view returns (uint16)',
   'function paused() external view returns (bool)',
+  'function settleMatch(bytes32 matchId, address winner, address loser, uint256 stake, uint256 deadline, bytes signature) external',
+  'function refundMatch(bytes32 matchId, address p1, address p2, uint256 stake, uint256 deadline, bytes signature) external',
+  'function settledMatches(bytes32) external view returns (bool)',
   'event Deposited(address indexed user, uint256 amount, uint256 newBalance)',
   'event Withdrawn(address indexed user, uint256 amount, uint256 newBalance)',
-  'event MatchSettled(bytes32 indexed matchId, address indexed winner, address indexed loser, uint256 stake, uint256 winnerPayout, uint256 fee)'
+  'event MatchSettled(bytes32 indexed matchId, address indexed winner, address indexed loser, uint256 stake, uint256 winnerPayout, uint256 fee)',
+  'event MatchRefunded(bytes32 indexed matchId, address indexed p1, address indexed p2, uint256 stake)'
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -87,6 +91,7 @@ const state = {
   houseFeeBps: 1000,
   isCorrectChain: false,
   pollHandle: null,
+  activeMatchId: null,   // set by tapstar-settle.js while a match is in progress
   listeners: new Set()   // subscribers for state changes
 };
 
@@ -110,7 +115,8 @@ function getPublicState() {
     isCorrectChain:  state.isCorrectChain,
     chainId:         CHAIN.chainId,
     contractAddress: CHAIN.contractAddress,
-    explorerBase:    CHAIN.explorerBase
+    explorerBase:    CHAIN.explorerBase,
+    activeMatchId:   state.activeMatchId || null
   };
 }
 
@@ -325,6 +331,7 @@ async function withdraw(amountEth) {
   ensureReady();
   const amt = parseEther(String(amountEth));
   if (amt <= 0n) throw new Error('Amount must be greater than 0');
+  if (state.activeMatchId) throw new Error('Cannot withdraw during an active match');
 
   const tx = await state.contract.withdraw(amt);
   emit('txSent', { type: 'withdraw', hash: tx.hash, amount: amountEth });
@@ -336,6 +343,7 @@ async function withdraw(amountEth) {
 
 async function withdrawAll() {
   ensureReady();
+  if (state.activeMatchId) throw new Error('Cannot withdraw during an active match');
   const tx = await state.contract.withdrawAll();
   emit('txSent', { type: 'withdrawAll', hash: tx.hash });
   const receipt = await tx.wait();
@@ -348,6 +356,65 @@ function ensureReady() {
   if (!state.address)        throw new Error('Wallet not connected');
   if (!state.contract)       throw new Error('Contract not initialized');
   if (!state.isCorrectChain) throw new Error('Wrong network — please switch chain');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   ACTIVE MATCH GUARD
+//   Settle module marks/unmarks the active match here so we can disable
+//   withdrawals while a stake is "soft-locked" off-chain. This is Option A
+//   from our design — defense-in-depth, not absolute.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function setActiveMatch(matchId) {
+  state.activeMatchId = matchId || null;
+  emit('activeMatchChanged');
+}
+
+function getActiveMatch() {
+  return state.activeMatchId || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   ON-CHAIN SETTLEMENT
+//   These call TapStarArenaV3 with a Worker-issued signature.
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function settleMatch({ matchId, winner, loser, stake, deadline, signature }) {
+  ensureReady();
+  // Idempotency: check if already settled, return early
+  const already = await state.contract.settledMatches(matchId);
+  if (already) {
+    emit('matchAlreadySettled', { matchId });
+    await refreshBalances();
+    return null;
+  }
+  const tx = await state.contract.settleMatch(matchId, winner, loser, stake, deadline, signature);
+  emit('txSent', { type: 'settle', hash: tx.hash, matchId });
+  const receipt = await tx.wait();
+  await refreshBalances();
+  emit('txConfirmed', { type: 'settle', hash: tx.hash, matchId, receipt });
+  return receipt;
+}
+
+async function refundMatch({ matchId, p1, p2, stake, deadline, signature }) {
+  ensureReady();
+  const already = await state.contract.settledMatches(matchId);
+  if (already) {
+    emit('matchAlreadySettled', { matchId });
+    await refreshBalances();
+    return null;
+  }
+  const tx = await state.contract.refundMatch(matchId, p1, p2, stake, deadline, signature);
+  emit('txSent', { type: 'refund', hash: tx.hash, matchId });
+  const receipt = await tx.wait();
+  await refreshBalances();
+  emit('txConfirmed', { type: 'refund', hash: tx.hash, matchId, receipt });
+  return receipt;
+}
+
+async function isMatchSettled(matchId) {
+  if (!state.contract) return false;
+  try { return await state.contract.settledMatches(matchId); } catch { return false; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -381,12 +448,19 @@ const TapStarWallet = {
   refreshBalances,
   canAffordStake,
   explorerTx,
+  // ── Phase 3 additions ─────────────────────────────────────────
+  settleMatch,
+  refundMatch,
+  isMatchSettled,
+  setActiveMatch,
+  getActiveMatch,
+  // ──────────────────────────────────────────────────────────────
   getState: getPublicState,
   onChange(fn) {
     state.listeners.add(fn);
     return () => state.listeners.delete(fn);
   },
-  // Helper for downstream (Phase 3 — match settlement will use these)
+  // Helper for downstream (Phase 3 — match settlement uses these)
   getAddress() { return state.address; },
   getSigner()  { return state.signer; },
   getContract(){ return state.contract; },
