@@ -809,6 +809,7 @@ let walletBalance   = 0;
 
 // Game state
 let gameRunning     = false;
+let matchEnded      = false;
 let countdownActive = false;
 let isVsPC          = false;
 let isOnlinePvP     = false;
@@ -853,6 +854,7 @@ function fullResetGameState() {
   
   // Reset ALL game state flags
   gameRunning = false;
+  matchEnded = false;
   countdownActive = false;
   gameStartTime = null;
   
@@ -1638,7 +1640,9 @@ function subscribeToRoom(code) {
  
   roomRef.on('value', snap => {
     if (!snap.exists()) return;
-    const room = snap.val();
+    if (matchEnded) return;            
+  const room = snap.val();
+  if (!room) return;
  
     // Host: detect when opponent joins
     if (myPlayerNum === 1 && room.p2 && document.getElementById('screen-room').classList.contains('active')) {
@@ -1659,7 +1663,10 @@ function subscribeToRoom(code) {
  
     // If room already playing, join immediately
     if (room.status === 'playing' && !gameRunning && !countdownActive) {
-      startGameScreen(false, true);
+      // Defer to next tick so we don't trigger Firebase writes synchronously
+      // inside this listener callback — that path can deep-recurse into
+      // Firebase's ImmutableTree traversal and throw RangeError.
+      setTimeout(() => startGameScreen(false, true), 0);
     }
  
     // ═══ NEW: Sync opponent's grid state ═══
@@ -1697,7 +1704,8 @@ function subscribeToRoom(code) {
  
     // Game ended by opponent
     if (room.status === 'finished' && gameRunning) {
-      forceEndGame(room);
+      // Defer to next tick — same reason as the startGameScreen branch above.
+      setTimeout(() => forceEndGame(room), 0);
     }
   });
 }
@@ -1806,6 +1814,7 @@ function startVsPC() {
 // ═══════════════════════════════════════════════════════════
 function startGameScreen(vsPC, onlinePvP) {
   // ========== BULLETPROOF CLEANUP FROM PREVIOUS GAME ==========
+  if (matchEnded) return;
   fullResetGameState();
   // ========== END CLEANUP ==========
   
@@ -1853,27 +1862,26 @@ function startGameScreen(vsPC, onlinePvP) {
     setClass('tapArea', 'vs-pc', false);
     setText('displayStake', stakeAmount.toFixed(2));
     setText('displayPot', (stakeAmount * 2).toFixed(2));
-    // Update room status to playing and clear old game data
+    // Update room status to playing and clear ONLY my own game data.
+    // CRITICAL: never write to the opponent's fields here. If our
+    // startGameScreen runs late (e.g. listener-triggered after they've
+    // already started tapping), wiping p${oppPlayerNum}/* would zero
+    // out their progress mid-match — that was the opponent-grid-wipe
+    // bug. Each player only ever clears their own fields. Status is
+    // promoted to 'playing' by the host only.
     if (firebaseReady && currentRoomCode) {
-      // Clear old per-game player data WITHOUT nuking identity fields
-      // (uid, username, walletAddress, score baseline). Use slash-paths so
-      // .update() targets specific nested fields instead of replacing whole subtrees.
-      const oppPlayerNum = myPlayerNum === 1 ? 2 : 1;
       const ts = sharedNow();
       const clearData = {
-        status: 'playing',
         [`p${myPlayerNum}/grid`]:      null,
         [`p${myPlayerNum}/score`]:     0,
         [`p${myPlayerNum}/taps`]:      0,
         [`p${myPlayerNum}/combo`]:     1,
         [`p${myPlayerNum}/medal`]:     equippedMedalId || null,
-        [`p${myPlayerNum}/timestamp`]: ts,
-        [`p${oppPlayerNum}/grid`]:      null,
-        [`p${oppPlayerNum}/score`]:     0,
-        [`p${oppPlayerNum}/taps`]:      0,
-        [`p${oppPlayerNum}/combo`]:     1,
-        [`p${oppPlayerNum}/timestamp`]: ts
+        [`p${myPlayerNum}/timestamp`]: ts
       };
+      if (myPlayerNum === 1) {
+        clearData.status = 'playing';
+      }
       db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
     }
   }
@@ -2177,9 +2185,9 @@ function startTimer() {
 
   // Main countdown timer
   timerInterval = setInterval(() => {
-    if (!gameRunning) {
-      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-      return;
+    if (!gameRunning || matchEnded) {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    return;
     }
     timeLeft--;
     const tEl = document.getElementById('timer');
@@ -2203,15 +2211,20 @@ function startTimer() {
 //  END GAME
 // ═══════════════════════════════════════════════════════════
 function endGame() {
+  if (matchEnded) return;             // Prevent double-end
+  matchEnded = true;
   gameRunning = false;
   gameStartTime = null;
   
-  // Stop all intervals just to be completely sure
+  // Detach Firebase listener IMMEDIATELY, before any awaits or other work.
+  // Otherwise stale snapshots can re-trigger startGameScreen after the
+  // match has already ended.
+  if (roomRef) { roomRef.off(); roomRef = null; }
+  
   if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
   if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
   if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
   if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
-  
   // s1 = MY score (my cells), s2 = OPPONENT score (their cells)
   const s1    = cells.filter(c => c.owner === myPlayerNum).length;
   const oppNum = myPlayerNum === 1 ? 2 : 1;
@@ -2329,7 +2342,6 @@ function endGame() {
   }
 
   // Clean up room listener
-  if (roomRef) { roomRef.off(); roomRef = null; }
 
   document.getElementById('result-overlay').classList.add('show');
 }
