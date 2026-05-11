@@ -472,14 +472,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <div class="section-title">// STAKE AMOUNT</div>
         <div class="stake-row">
           <div class="stake-input-wrap">
-            <input type="number" id="roomStakeInput" value="1" min="0.1" step="0.1">
-            <div class="stake-unit">POL</div>
+            <input type="number" id="roomStakeInput" value="0.001" min="0.001" step="0.001">
+            <div class="stake-unit">ETH</div>
           </div>
           <div class="preset-btns">
-            <button class="preset-btn" onclick="setRoomStake(.5)">0.5</button>
-            <button class="preset-btn" onclick="setRoomStake(1)">1.0</button>
-            <button class="preset-btn" onclick="setRoomStake(5)">5.0</button>
-            <button class="preset-btn" onclick="setRoomStake(10)">10</button>
+            <button class="preset-btn" onclick="setRoomStake(0.001)">0.001</button>
+            <button class="preset-btn" onclick="setRoomStake(0.005)">0.005</button>
+            <button class="preset-btn" onclick="setRoomStake(0.01)">0.01</button>
+            <button class="preset-btn" onclick="setRoomStake(0.05)">0.05</button>
           </div>
         </div>
         <button class="room-btn" onclick="createPrivateRoom()">CREATE ROOM</button>
@@ -810,13 +810,6 @@ let walletBalance   = 0;
 // Game state
 let gameRunning     = false;
 let matchEnded      = false;
-// True once startGameScreen has run for the current match. Prevents the
-// room listener's "join in progress match" branch from re-entering
-// startGameScreen on every Firebase echo during the brief window between
-// fullResetGameState() (gameRunning=false) and startTimer() (gameRunning=true).
-// Cleared on endGame / backToLobby / new subscribeToRoom so a new match
-// can enter the game screen the same way.
-let gameScreenEntered = false;
 let countdownActive = false;
 let isVsPC          = false;
 let isOnlinePvP     = false;
@@ -1405,7 +1398,7 @@ function setRoomStake(v) {
 
 async function createPrivateRoom() {
   if (!currentUser) { showToast('Create an account first'); return; }
-  const stake = parseFloat(document.getElementById('roomStakeInput').value) || 1.0;
+  const stake = parseFloat(document.getElementById('roomStakeInput').value) || 0.001;
   const code  = generateRoomCode();
   currentRoomCode = code;
   stakeAmount     = stake;
@@ -1446,7 +1439,7 @@ async function joinPrivateRoom() {
       `<div class="room-player-row"><span class="room-player-name opp">HOST</span><span class="room-player-status ready">HOST</span></div>
        <div class="room-player-row"><span class="room-player-name you">${currentUser.username} (YOU)</span><span class="room-player-status ready">JOINED</span></div>`;
     setTimeout(() => {
-      stakeAmount = 1.0; gameMode = 30;
+      stakeAmount = 0.001; gameMode = 30;
       startCountdown('HOST', currentUser.username, () => startGameScreen(false, true));
     }, 2000);
     return;
@@ -1534,12 +1527,56 @@ async function leaveRoom() {
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
   document.getElementById('joinCodeInput').value = '';
-  document.getElementById('roomStakeInput').value = '1';
+  document.getElementById('roomStakeInput').value = '0.001';
   
   showScreen('screen-lobby');
 }
-// Emergency cleanup - call this if game freezes
+// Emergency cleanup - call this if game freezes, or when the player
+// chooses to bail mid-match via the EMERGENCY EXIT button.
+//
+// IMPORTANT: if a match is currently running, we must notify Firebase
+// of our exit BEFORE we tear down local state — otherwise the opponent
+// is left with status:'playing' and no finalReport from us, which makes
+// their handleMatchEnd() poll the Worker for the full 5-minute timeout
+// before it can refund. By writing status:'finished' + a forfeit
+// finalReport here, the opponent's room listener fires forceEndGame
+// almost immediately, both finalReports land in Firebase within seconds,
+// and the Worker resolves the match (refund, since our 0/0 report and
+// their real report will disagree past tolerance — net effect: both
+// players get their stakes back, exiting player isn't punished, opponent
+// isn't stuck on "SETTLING...").
 function forceCleanup() {
+  // Capture state we need BEFORE we nuke local references
+  const wasInMatch = !!(gameRunning && !matchEnded && firebaseReady && currentRoomCode && myPlayerNum);
+  const exitRoomCode = currentRoomCode;
+  const exitPlayerNum = myPlayerNum;
+
+  if (wasInMatch) {
+    // Mark this match as ended on our side so the listener (if it still
+    // fires for any reason) and timer can't restart things.
+    matchEnded = true;
+
+    // Write our "I bailed" finalReport. Score 0 / 0 guarantees the two
+    // reports won't match (opponent will write their real numbers when
+    // their listener kicks them through forceEndGame), so the Worker
+    // resolves to a refund within seconds rather than the 5-min timeout.
+    const myFR = {
+      version: 1,
+      myScore: 0,
+      oppScore: 0,
+      reportedAt: firebase.database.ServerValue.TIMESTAMP,
+      forfeit: true
+    };
+    db.ref(`rooms/${exitRoomCode}/p${exitPlayerNum}/finalReport`).set(myFR).catch(() => {});
+
+    // Promote room to finished so the opponent's listener fires the
+    // "match ended" branch and they get out of the game screen too.
+    db.ref(`rooms/${exitRoomCode}`).update({
+      status: 'finished',
+      finishedAt: firebase.database.ServerValue.TIMESTAMP
+    }).catch(() => {});
+  }
+
   if (timerInterval) clearInterval(timerInterval);
   if (aiInterval) clearInterval(aiInterval);
   if (syncInterval) clearInterval(syncInterval);
@@ -1551,6 +1588,7 @@ function forceCleanup() {
     db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
   }
   gameRunning = false;
+  gameScreenEntered = false;
   currentRoomCode = null;
   showScreen('screen-lobby');
 }
@@ -1644,9 +1682,6 @@ function subscribeToRoom(code) {
   if (!firebaseReady) return;
   if (roomRef) roomRef.off();
   roomRef = db.ref(`rooms/${code}`);
-  // Fresh room: re-arm the entry guard so the listener can trigger
-  // startGameScreen for this match.
-  gameScreenEntered = false;
  
   roomRef.on('value', snap => {
     if (!snap.exists()) return;
@@ -1671,14 +1706,8 @@ function subscribeToRoom(code) {
       );
     }
  
-    // If room already playing, join immediately.
-    // The gameScreenEntered guard prevents this branch from firing
-    // repeatedly during the brief window between fullResetGameState()
-    // (which sets gameRunning=false) and startTimer() (which sets it
-    // back to true). Without this guard, the listener fires on every
-    // Firebase echo of our own writes during setup and re-enters
-    // startGameScreen, wiping the cells we just placed.
-    if (room.status === 'playing' && !gameRunning && !countdownActive && !gameScreenEntered) {
+    // If room already playing, join immediately
+    if (room.status === 'playing' && !gameRunning && !countdownActive) {
       startGameScreen(false, true);
     }
  
@@ -1828,11 +1857,6 @@ function startGameScreen(vsPC, onlinePvP) {
   // ========== BULLETPROOF CLEANUP FROM PREVIOUS GAME ==========
   if (matchEnded) return;
   fullResetGameState();
-  // Mark that we've entered the game screen for this match. The room
-  // listener checks this flag to avoid re-entering startGameScreen on
-  // its own Firebase echoes during setup. Set AFTER fullResetGameState
-  // so it isn't accidentally cleared. Reset on match end / lobby return.
-  gameScreenEntered = true;
   // ========== END CLEANUP ==========
   
   isVsPC      = vsPC;
@@ -1879,26 +1903,27 @@ function startGameScreen(vsPC, onlinePvP) {
     setClass('tapArea', 'vs-pc', false);
     setText('displayStake', stakeAmount.toFixed(2));
     setText('displayPot', (stakeAmount * 2).toFixed(2));
-    // Update room status to playing and clear ONLY my own game data.
-    // CRITICAL: never write to the opponent's fields here. If our
-    // startGameScreen runs late (e.g. listener-triggered after they've
-    // already started tapping), wiping p${oppPlayerNum}/* would zero
-    // out their progress mid-match — that was the opponent-grid-wipe
-    // bug. Each player only ever clears their own fields. Status is
-    // promoted to 'playing' by the host only.
+    // Update room status to playing and clear old game data
     if (firebaseReady && currentRoomCode) {
+      // Clear old per-game player data WITHOUT nuking identity fields
+      // (uid, username, walletAddress, score baseline). Use slash-paths so
+      // .update() targets specific nested fields instead of replacing whole subtrees.
+      const oppPlayerNum = myPlayerNum === 1 ? 2 : 1;
       const ts = sharedNow();
       const clearData = {
+        status: 'playing',
         [`p${myPlayerNum}/grid`]:      null,
         [`p${myPlayerNum}/score`]:     0,
         [`p${myPlayerNum}/taps`]:      0,
         [`p${myPlayerNum}/combo`]:     1,
         [`p${myPlayerNum}/medal`]:     equippedMedalId || null,
-        [`p${myPlayerNum}/timestamp`]: ts
+        [`p${myPlayerNum}/timestamp`]: ts,
+        [`p${oppPlayerNum}/grid`]:      null,
+        [`p${oppPlayerNum}/score`]:     0,
+        [`p${oppPlayerNum}/taps`]:      0,
+        [`p${oppPlayerNum}/combo`]:     1,
+        [`p${oppPlayerNum}/timestamp`]: ts
       };
-      if (myPlayerNum === 1) {
-        clearData.status = 'playing';
-      }
       db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
     }
   }
@@ -2232,7 +2257,6 @@ function endGame() {
   matchEnded = true;
   gameRunning = false;
   gameStartTime = null;
-  gameScreenEntered = false;          // Re-arm for next match
   
   // Detach Firebase listener IMMEDIATELY, before any awaits or other work.
   // Otherwise stale snapshots can re-trigger startGameScreen after the
@@ -2475,9 +2499,6 @@ function backToLobby() {
   
   // Full state reset using the bulletproof function
   fullResetGameState();
-  
-  // Re-arm the game-screen entry flag for the next match
-  gameScreenEntered = false;
   
   // Clean up Firebase listener
   if (roomRef) { roomRef.off(); roomRef = null; }
