@@ -914,7 +914,8 @@ function fullResetGameState() {
 let currentRoomCode = null;
 let myPlayerNum     = 1; // 1 or 2
 let opponentName    = '—';
-let mmQueueRef      = null; // Firebase ref for matchmaking cleanup
+let mmListenerRef   = null; // Firebase ref for the queued-player's player_match listener
+const WORKER_URL    = 'https://tapstar-signer.gregmuco1.workers.dev';
 let roomRef         = null; // Firebase ref for current room
 let presenceRef     = null;
 let opponentScore   = 0;
@@ -1266,103 +1267,82 @@ async function startQuickMatch() {
     return;
   }
 
-  const uid      = currentUser.uid;
-  const username = currentUser.username;
-  const queueRef = db.ref('matchmaking');
-// Phase 3 fix: refuse to queue without a connected wallet
-const myWallet = window.TapStarWallet?.getAddress();
-if (!myWallet) {
-  showToast('Connect your wallet first');
-  cancelMatchmaking();
-  return;
-}
-  // ADD TIMEOUT - cancel after 30 seconds
+  // Wallet required before queueing
+  const myWallet = window.TapStarWallet?.getAddress();
+  if (!myWallet) {
+    showToast('Connect your wallet first');
+    showScreen('screen-lobby');
+    return;
+  }
+
+  // 30s overall pairing timeout
   const timeoutId = setTimeout(() => {
     cancelMatchmaking();
     showToast('No opponents found. Try again or play VS Computer.');
   }, 30000);
 
   try {
-    let matched = false;
+    // Get a fresh ID token to authenticate with the matchmaker Worker
+    const idToken = await firebase.auth().currentUser.getIdToken();
 
-    await queueRef.transaction(queue => {
-      if (!queue) {
-        return { [uid]: { username, timestamp: Date.now() } };
-      }
-      const others = Object.keys(queue).filter(k => k !== uid);
-      if (others.length > 0) {
-        const oppUid  = others[0];
-        const oppData = queue[oppUid];
-        matched       = { uid: oppUid, username: oppData.username };
-        const newQueue = { ...queue };
-        delete newQueue[oppUid];
-        return newQueue;
-      }
-return { ...queue, [uid]: {
-        username,
-        walletAddress: window.TapStarWallet?.getAddress() || null,
-        timestamp: Date.now()
-      }};    });
+    // Ask the Worker to pair us
+    const res = await fetch(WORKER_URL + '/pair', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        idToken,
+        username:      currentUser.username,
+        walletAddress: myWallet
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `pair failed (HTTP ${res.status})`);
 
-   if (matched) {
+    if (data.status === 'paired' || data.status === 'already_paired') {
+      // Worker has already created the room with both wallets stamped.
       clearTimeout(timeoutId);
-      const matchedRoomCode = generateRoomCode();
-      opponentName    = matched.username;
-      myPlayerNum     = 2;
-      stakeAmount     = QUICK_MATCH_STAKE;
-      gameMode        = 30;
-      await createFirebaseRoom(matchedRoomCode, matched.uid, uid, stakeAmount, gameMode);
-      // Phase 3 fix: stamp BOTH wallets immediately, using the queued player's address
-      const myAddr  = window.TapStarWallet?.getAddress() || null;
-      const oppAddr = matched.walletAddress || null;
-      try {
-        await db.ref(`rooms/${matchedRoomCode}`).update({
-          'p1/walletAddress': oppAddr,
-          'p1/username':      matched.username,
-          'p2/walletAddress': myAddr,
-          'p2/username':      currentUser.username
-        });
-      } catch (e) { console.warn('[mm] wallet stamp failed', e); }
-      await db.ref(`player_match/${matched.uid}`).set({
-        roomCode: matchedRoomCode,
-        opponent: username,
-        opponentWallet: myAddr
-      });
-      subscribeToRoom(matchedRoomCode);
+      opponentName    = data.opponent;
+      myPlayerNum     = data.asPlayer;
+      stakeAmount     = data.stakeAmount;
+      gameMode        = data.gameMode;
+      currentRoomCode = data.roomCode;
+      // If this was an already_paired idempotent response, also clear our
+      // player_match entry so we don't loop on the listener case below.
+      if (data.status === 'already_paired') {
+        db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+      }
+      subscribeToRoom(data.roomCode);
       document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
       startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
-
-    } else {
-      mmQueueRef = queueRef.child(uid);
-      const matchListener = db.ref(`player_match/${uid}`);
-      
-     matchListener.on('value', async snap => {
-        if (!snap.val()) return;
-        clearTimeout(timeoutId);
-        const { roomCode, opponent, opponentWallet } = snap.val();
-        matchListener.off();
-        matchListener.remove();
-        queueRef.child(uid).remove();
-        opponentName   = opponent;
-        myPlayerNum    = 1;
-        stakeAmount    = QUICK_MATCH_STAKE;
-        currentRoomCode = roomCode;
-        // Phase 3: stamp my wallet onto p1, since the joiner created the room with us as p1
-        try {
-          await db.ref(`rooms/${roomCode}/p1`).update({
-            walletAddress: window.TapStarWallet?.getAddress() || null,
-            username: currentUser.username
-          });
-        } catch {}
-        subscribeToRoom(roomCode);
-        document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
-        startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
-      });
-
-      document.getElementById('mmStatus').textContent = '// WAITING FOR OPPONENT...';
+      return;
     }
 
-  } catch(e) {
+    // status === 'queued' — wait for someone else to pair with us. The
+    // Worker will write player_match/${uid} when that happens.
+    if (data.status !== 'queued') {
+      throw new Error('unexpected pair response: ' + JSON.stringify(data));
+    }
+    document.getElementById('mmStatus').textContent = '// WAITING FOR OPPONENT...';
+    mmListenerRef = db.ref(`player_match/${currentUser.uid}`);
+    mmListenerRef.on('value', snap => {
+      const v = snap.val();
+      if (!v) return;
+      clearTimeout(timeoutId);
+      mmListenerRef.off();
+      mmListenerRef = null;
+      // Consume the pairing notification (own-uid delete is allowed by rules)
+      db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+      opponentName    = v.opponent;
+      myPlayerNum     = v.asPlayer || 1;
+      stakeAmount     = v.stakeAmount ?? QUICK_MATCH_STAKE;
+      gameMode        = v.gameMode    ?? 30;
+      currentRoomCode = v.roomCode;
+      subscribeToRoom(v.roomCode);
+      document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
+      startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
+    });
+
+  } catch (e) {
     clearTimeout(timeoutId);
     showToast('Matchmaking error: ' + e.message);
     showScreen('screen-lobby');
@@ -1370,14 +1350,26 @@ return { ...queue, [uid]: {
 }
 
 async function cancelMatchmaking() {
-  if (firebaseReady && currentUser) {
-    db.ref(`matchmaking/${currentUser.uid}`).remove().catch(() => {});
-    db.ref(`player_match/${currentUser.uid}`).off();
-    db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+  // Stop the listener locally first so a late pairing notification can't
+  // drag us into a match after we've decided to cancel.
+  if (mmListenerRef) {
+    mmListenerRef.off();
+    mmListenerRef = null;
   }
-  if (mmQueueRef) {
-    mmQueueRef.off();
-    mmQueueRef = null;
+  if (firebaseReady && currentUser) {
+    try {
+      const idToken = await firebase.auth().currentUser.getIdToken();
+      await fetch(WORKER_URL + '/cancel-queue', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ idToken })
+      });
+    } catch (e) {
+      console.warn('[cancel-queue] worker error', e);
+      // Best-effort cleanup of our own player_match entry (rules allow
+      // own-uid delete) so we don't get stuck if the Worker is down
+      db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
+    }
   }
   showScreen('screen-lobby');
 }
@@ -1399,18 +1391,18 @@ function setRoomStake(v) {
 async function createPrivateRoom() {
   if (!currentUser) { showToast('Create an account first'); return; }
   const stake = parseFloat(document.getElementById('roomStakeInput').value) || 0.001;
-  const code  = generateRoomCode();
-  currentRoomCode = code;
   stakeAmount     = stake;
   myPlayerNum     = 1;
-
-  document.getElementById('roomCodeDisplay').textContent = code;
-  document.getElementById('room-choice').style.display  = 'none';
-  document.getElementById('room-hosting').style.display = 'block';
-  updateRoomPlayersList(currentUser.username, null, stake);
+  gameMode        = 30;
 
   if (!firebaseReady) {
-    // Demo: simulate opponent joining after 3 seconds
+    // Demo path: synthesize a code, simulate opponent joining
+    const code = generateRoomCode();
+    currentRoomCode = code;
+    document.getElementById('roomCodeDisplay').textContent = code;
+    document.getElementById('room-choice').style.display  = 'none';
+    document.getElementById('room-hosting').style.display = 'block';
+    updateRoomPlayersList(currentUser.username, null, stake);
     setTimeout(() => {
       updateRoomPlayersList(currentUser.username, 'DEMO_OPP', stake);
       document.getElementById('roomWaiting').style.display = 'none';
@@ -1419,9 +1411,34 @@ async function createPrivateRoom() {
     return;
   }
 
-  // Create room in Firebase
-  await createFirebaseRoom(code, currentUser.uid, null, stake, 30);
-  subscribeToRoom(code);
+  const myWallet = window.TapStarWallet?.getAddress();
+  if (!myWallet) { showToast('Connect your wallet first'); return; }
+
+  try {
+    const idToken = await firebase.auth().currentUser.getIdToken();
+    const res = await fetch(WORKER_URL + '/create-room', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        idToken,
+        username:      currentUser.username,
+        walletAddress: myWallet,
+        stakeAmount:   stake,
+        gameMode:      30
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `create-room failed (HTTP ${res.status})`);
+
+    currentRoomCode = data.roomCode;
+    document.getElementById('roomCodeDisplay').textContent = data.roomCode;
+    document.getElementById('room-choice').style.display  = 'none';
+    document.getElementById('room-hosting').style.display = 'block';
+    updateRoomPlayersList(currentUser.username, null, stake);
+    subscribeToRoom(data.roomCode);
+  } catch (e) {
+    showToast('Could not create room: ' + e.message);
+  }
 }
 
 async function joinPrivateRoom() {
@@ -1445,33 +1462,37 @@ async function joinPrivateRoom() {
     return;
   }
 
+  const myWallet = window.TapStarWallet?.getAddress();
+  if (!myWallet) { showToast('Connect your wallet first'); return; }
+
   try {
-    const snap = await db.ref(`rooms/${code}`).once('value');
-    if (!snap.exists()) { showToast('Room not found — check the code'); return; }
-    const room = snap.val();
-    if (room.p2) { showToast('Room is full'); return; }
-    if (room.status !== 'waiting') { showToast('Game already in progress'); return; }
-
-    currentRoomCode = code;
-    myPlayerNum     = 2;
-    stakeAmount     = room.stakeAmount;
-    gameMode        = room.gameMode;
-    opponentName    = room.p1.username;
-
-    // Join the room
-await db.ref(`rooms/${code}/p2`).set({
-      uid: currentUser.uid,
-      username: currentUser.username,
-      walletAddress: window.TapStarWallet?.getAddress() || null,
-      score: 0
+    const idToken = await firebase.auth().currentUser.getIdToken();
+    const res = await fetch(WORKER_URL + '/join-room', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        idToken,
+        username:      currentUser.username,
+        walletAddress: myWallet,
+        roomCode:      code
+      })
     });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not join room'); return; }
+
+    currentRoomCode = data.roomCode;
+    myPlayerNum     = data.asPlayer;
+    stakeAmount     = data.stakeAmount;
+    gameMode        = data.gameMode;
+    opponentName    = data.opponent;
+
     document.getElementById('room-choice').style.display  = 'none';
     document.getElementById('room-joined').style.display  = 'block';
     document.getElementById('roomJoinedPlayersList').innerHTML =
       `<div class="room-player-row"><span class="room-player-name opp">${opponentName}</span><span class="room-player-status ready">HOST</span></div>
        <div class="room-player-row"><span class="room-player-name you">${currentUser.username} (YOU)</span><span class="room-player-status ready">JOINED</span></div>`;
 
-    subscribeToRoom(code);
+    subscribeToRoom(data.roomCode);
 
   } catch(e) {
     showToast('Error joining room: ' + e.message);
@@ -1506,29 +1527,35 @@ async function startRoomGame() {
 }
 
 async function leaveRoom() {
-  // Clean up listeners FIRST
+  // Clean up listeners FIRST so we don't react to our own deletion
   if (roomRef) {
     roomRef.off();
     roomRef = null;
   }
-  
-  if (firebaseReady && currentRoomCode) {
-    if (myPlayerNum === 1) {
-      db.ref(`rooms/${currentRoomCode}`).remove().catch(() => {});
-    } else {
-      db.ref(`rooms/${currentRoomCode}/p2`).remove().catch(() => {});
-      db.ref(`rooms/${currentRoomCode}`).update({ status: 'waiting', p2: null }).catch(() => {});
+
+  const roomCodeAtExit = currentRoomCode;
+
+  if (firebaseReady && roomCodeAtExit && currentUser) {
+    try {
+      const idToken = await firebase.auth().currentUser.getIdToken();
+      await fetch(WORKER_URL + '/leave-room', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ idToken, roomCode: roomCodeAtExit })
+      });
+    } catch (e) {
+      console.warn('[leave-room] worker error', e);
     }
     currentRoomCode = null;
   }
-  
-  // Reset ALL UI states
+
+  // Reset ALL UI states regardless of network result
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
   document.getElementById('joinCodeInput').value = '';
   document.getElementById('roomStakeInput').value = '0.001';
-  
+
   showScreen('screen-lobby');
 }
 // Emergency cleanup - call this if game freezes, or when the player
@@ -1581,7 +1608,7 @@ function forceCleanup() {
   if (aiInterval) clearInterval(aiInterval);
   if (syncInterval) clearInterval(syncInterval);
   if (roomRef) { roomRef.off(); roomRef = null; }
-  if (mmQueueRef) { mmQueueRef.off(); mmQueueRef = null; }
+  if (mmListenerRef) { mmListenerRef.off(); mmListenerRef = null; }
   if (firebaseReady && currentUser) {
     db.ref(`matchmaking/${currentUser.uid}`).remove().catch(() => {});
     db.ref(`player_match/${currentUser.uid}`).off();
@@ -1595,36 +1622,10 @@ function forceCleanup() {
 
 // ═══════════════════════════════════════════════════════════
 //  FIREBASE ROOM MANAGEMENT
+//  (createFirebaseRoom removed — both Quick Match and Private Rooms
+//   now go through the matchmaker Worker which writes rooms via its
+//   service account.)
 // ═══════════════════════════════════════════════════════════
-async function createFirebaseRoom(code, p1uid, p2uid, stake, mode) {
-  // Phase 3: stamp wallet addresses into the room so the signer Worker
-  // knows where to pay. Only this client's own address can be set here —
-  // p2's address is added when they actually join.
-  const myWallet = window.TapStarWallet?.getAddress() || null;
-  const isP1Me = p1uid === currentUser?.uid;
-  const isP2Me = p2uid === currentUser?.uid;
-
-  const roomData = {
-    p1: {
-      uid: p1uid,
-      username: isP1Me ? currentUser.username : '—',
-      walletAddress: isP1Me ? myWallet : null,
-      score: 0
-    },
-    p2: p2uid ? {
-      uid: p2uid,
-      username: isP2Me ? currentUser.username : '—',
-      walletAddress: isP2Me ? myWallet : null,
-      score: 0
-    } : null,
-    stakeAmount: stake,
-    gameMode: mode,
-    status: 'waiting',
-    createdAt: firebase.database.ServerValue.TIMESTAMP
-  };
-  await db.ref(`rooms/${code}`).set(roomData);
-  currentRoomCode = code;
-}
 function applyOpponentGrid(oppGrid, oppTimestamp) {
   const oppNum = myPlayerNum === 1 ? 2 : 1;
   
@@ -1903,28 +1904,23 @@ function startGameScreen(vsPC, onlinePvP) {
     setClass('tapArea', 'vs-pc', false);
     setText('displayStake', stakeAmount.toFixed(2));
     setText('displayPot', (stakeAmount * 2).toFixed(2));
-    // Update room status to playing and clear old game data
+    // Reset my OWN slot for the new game. Strict RTDB rules forbid writing
+    // to the opponent's slot, so we don't try — the opponent's syncMyGrid
+    // tick (every 400ms) will overwrite their own stale state shortly.
+    // The status transition 'waiting/countdown' -> 'playing' is host-only;
+    // p2 just resets their slot.
     if (firebaseReady && currentRoomCode) {
-      // Clear old per-game player data WITHOUT nuking identity fields
-      // (uid, username, walletAddress, score baseline). Use slash-paths so
-      // .update() targets specific nested fields instead of replacing whole subtrees.
-      const oppPlayerNum = myPlayerNum === 1 ? 2 : 1;
       const ts = sharedNow();
-      const clearData = {
-        status: 'playing',
+      const myReset = {
         [`p${myPlayerNum}/grid`]:      null,
         [`p${myPlayerNum}/score`]:     0,
         [`p${myPlayerNum}/taps`]:      0,
         [`p${myPlayerNum}/combo`]:     1,
         [`p${myPlayerNum}/medal`]:     equippedMedalId || null,
-        [`p${myPlayerNum}/timestamp`]: ts,
-        [`p${oppPlayerNum}/grid`]:      null,
-        [`p${oppPlayerNum}/score`]:     0,
-        [`p${oppPlayerNum}/taps`]:      0,
-        [`p${oppPlayerNum}/combo`]:     1,
-        [`p${oppPlayerNum}/timestamp`]: ts
+        [`p${myPlayerNum}/timestamp`]: ts
       };
-      db.ref(`rooms/${currentRoomCode}`).update(clearData).catch(() => {});
+      if (myPlayerNum === 1) myReset.status = 'playing';
+      db.ref(`rooms/${currentRoomCode}`).update(myReset).catch(() => {});
     }
   }
  
