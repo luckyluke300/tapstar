@@ -1,0 +1,22 @@
+rules
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      ".read":  "auth != null",
+      ".write": "auth != null"
+    },
+
+    "matchmaking": {
+      ".read":  "auth != null",
+      ".write": "auth != null"
+    },
+
+    "player_match": {
+      ".read":  "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

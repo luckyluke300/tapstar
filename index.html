@@ -557,7 +557,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <!-- ═══════════════════ GAME SCREEN ═══════════════════ -->
 <div id="screen-game" class="screen">
   <div class="game-screen-inner">
-    <button class="back-btn" onclick="forceCleanup()" style="margin-bottom:10px;">← EMERGENCY EXIT</button>
     <div class="score-bar">
       <div>
         <div class="section-title" id="p1label">YOU</div>
@@ -1556,67 +1555,6 @@ async function leaveRoom() {
   document.getElementById('joinCodeInput').value = '';
   document.getElementById('roomStakeInput').value = '0.001';
 
-  showScreen('screen-lobby');
-}
-// Emergency cleanup - call this if game freezes, or when the player
-// chooses to bail mid-match via the EMERGENCY EXIT button.
-//
-// IMPORTANT: if a match is currently running, we must notify Firebase
-// of our exit BEFORE we tear down local state — otherwise the opponent
-// is left with status:'playing' and no finalReport from us, which makes
-// their handleMatchEnd() poll the Worker for the full 5-minute timeout
-// before it can refund. By writing status:'finished' + a forfeit
-// finalReport here, the opponent's room listener fires forceEndGame
-// almost immediately, both finalReports land in Firebase within seconds,
-// and the Worker resolves the match (refund, since our 0/0 report and
-// their real report will disagree past tolerance — net effect: both
-// players get their stakes back, exiting player isn't punished, opponent
-// isn't stuck on "SETTLING...").
-function forceCleanup() {
-  // Capture state we need BEFORE we nuke local references
-  const wasInMatch = !!(gameRunning && !matchEnded && firebaseReady && currentRoomCode && myPlayerNum);
-  const exitRoomCode = currentRoomCode;
-  const exitPlayerNum = myPlayerNum;
-
-  if (wasInMatch) {
-    // Mark this match as ended on our side so the listener (if it still
-    // fires for any reason) and timer can't restart things.
-    matchEnded = true;
-
-    // Write our "I bailed" finalReport. Score 0 / 0 guarantees the two
-    // reports won't match (opponent will write their real numbers when
-    // their listener kicks them through forceEndGame), so the Worker
-    // resolves to a refund within seconds rather than the 5-min timeout.
-    const myFR = {
-      version: 1,
-      myScore: 0,
-      oppScore: 0,
-      reportedAt: firebase.database.ServerValue.TIMESTAMP,
-      forfeit: true
-    };
-    db.ref(`rooms/${exitRoomCode}/p${exitPlayerNum}/finalReport`).set(myFR).catch(() => {});
-
-    // Promote room to finished so the opponent's listener fires the
-    // "match ended" branch and they get out of the game screen too.
-    db.ref(`rooms/${exitRoomCode}`).update({
-      status: 'finished',
-      finishedAt: firebase.database.ServerValue.TIMESTAMP
-    }).catch(() => {});
-  }
-
-  if (timerInterval) clearInterval(timerInterval);
-  if (aiInterval) clearInterval(aiInterval);
-  if (syncInterval) clearInterval(syncInterval);
-  if (roomRef) { roomRef.off(); roomRef = null; }
-  if (mmListenerRef) { mmListenerRef.off(); mmListenerRef = null; }
-  if (firebaseReady && currentUser) {
-    db.ref(`matchmaking/${currentUser.uid}`).remove().catch(() => {});
-    db.ref(`player_match/${currentUser.uid}`).off();
-    db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
-  }
-  gameRunning = false;
-  gameScreenEntered = false;
-  currentRoomCode = null;
   showScreen('screen-lobby');
 }
 
