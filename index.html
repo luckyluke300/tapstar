@@ -821,6 +821,9 @@ let aiInterval      = null;
 let syncInterval    = null;
 let powerInterval   = null; // NEW: track power-up spawn interval
 let countdownInterval = null; // NEW: track countdown interval
+let disconnectRefs  = [];  // onDisconnect refs to cancel on normal game end
+let disconnectFRRef = null; // the finalReport onDisconnect ref (updated with scores)
+let disconnectSyncN = 0;   // throttle counter for onDisconnect score refreshes
 let timeLeft        = 30;
 let cells           = [];
 let taps1           = 0, taps2 = 0;
@@ -845,6 +848,13 @@ function fullResetGameState() {
   if (powerInterval)     { clearInterval(powerInterval);     powerInterval = null; }
   if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
   
+  // Cancel any pending onDisconnect handlers
+  for (const ref of disconnectRefs) {
+    try { ref.onDisconnect().cancel(); } catch (e) {}
+  }
+  disconnectRefs = [];
+  disconnectFRRef = null;
+
   // Clear debounced sync timer
   if (invadeCell._syncTimer) {
     clearTimeout(invadeCell._syncTimer);
@@ -1718,6 +1728,19 @@ function syncMyGrid() {
   };
   
   db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}`).update(myData).catch(() => {});
+
+  // Refresh the onDisconnect forfeit report with current scores every ~2s.
+  // If we disconnect, the last-refreshed scores land in our forfeit report,
+  // keeping them within tolerance of the opponent's report.
+  if (disconnectFRRef && ++disconnectSyncN % 20 === 0) {
+    disconnectFRRef.onDisconnect().set({
+      version: 1,
+      myScore:    myData.score,
+      oppScore:   opponentScore,
+      reportedAt: firebase.database.ServerValue.TIMESTAMP,
+      forfeit:    true
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1859,6 +1882,26 @@ function startGameScreen(vsPC, onlinePvP) {
       };
       if (myPlayerNum === 1) myReset.status = 'playing';
       db.ref(`rooms/${currentRoomCode}`).update(myReset).catch(() => {});
+
+      // ── Auto-forfeit on disconnect ──────────────────────────────────
+      // If I close the tab or lose connection, Firebase will fire these
+      // onDisconnect writes automatically. The opponent's room listener
+      // sees status:'finished' and ends the game instantly.
+      const frRef  = db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}/finalReport`);
+      const stRef  = db.ref(`rooms/${currentRoomCode}/status`);
+      const ftRef  = db.ref(`rooms/${currentRoomCode}/finishedAt`);
+
+      frRef.onDisconnect().set({
+        version: 1, myScore: 0, oppScore: 0,
+        reportedAt: firebase.database.ServerValue.TIMESTAMP,
+        forfeit: true
+      });
+      stRef.onDisconnect().set('finished');
+      ftRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+
+      disconnectFRRef  = frRef;
+      disconnectRefs   = [frRef, stRef, ftRef];
+      disconnectSyncN  = 0;
     }
   }
  
@@ -2201,6 +2244,14 @@ function endGame() {
   if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
   if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
   if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
+
+  // Cancel disconnect auto-forfeit — we're ending normally
+  for (const ref of disconnectRefs) {
+    try { ref.onDisconnect().cancel(); } catch (e) {}
+  }
+  disconnectRefs = [];
+  disconnectFRRef = null;
+
   // s1 = MY score (my cells), s2 = OPPONENT score (their cells)
   const s1    = cells.filter(c => c.owner === myPlayerNum).length;
   const oppNum = myPlayerNum === 1 ? 2 : 1;
