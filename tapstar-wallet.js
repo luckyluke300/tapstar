@@ -39,7 +39,7 @@ const CHAINS = {
   sepolia: {
     network: sepolia,
     chainId: 11155111,
-    contractAddress: '0x90b7035cA41017FD5519eBa5a6753009141Ad906',
+    contractAddress: '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4',
     currencySymbol: 'tETH',           // displayed in UI (test ETH)
     explorerBase: 'https://sepolia.etherscan.io'
   },
