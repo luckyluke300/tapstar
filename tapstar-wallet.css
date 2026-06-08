@@ -168,3 +168,19 @@
 }
 .ts-stake-hint.warn{color:#ff6600;}
 .ts-stake-hint.ok{color:var(--p1);}
+
+/* ─── Withdrawal cooldown banner ──────────────────────────────────── */
+.ts-cooldown-banner{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,100,0,.12);
+  border:1px solid rgba(255,100,0,.4);
+  border-radius:4px;
+  padding:10px 14px;
+  margin-bottom:12px;
+  font-size:.65rem;letter-spacing:1.5px;
+  color:#ff8040;
+  text-align:center;
+  justify-content:center;
+}
+.ts-cooldown-icon{ font-size:1rem; }
+#tsWdrCooldownTimer{ font-weight:700; color:#ffaa60; }

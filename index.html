@@ -1284,6 +1284,14 @@ async function startQuickMatch() {
     return;
   }
 
+  // Balance check — must have enough in Hand before entering the queue
+  const affordCheck = window.TapStarWallet?.canAffordStake(QUICK_MATCH_STAKE);
+  if (affordCheck && !affordCheck.ok) {
+    showToast(affordCheck.reason);
+    showScreen('screen-lobby');
+    return;
+  }
+
   // 30s overall pairing timeout
   const timeoutId = setTimeout(() => {
     cancelMatchmaking();
@@ -1422,6 +1430,9 @@ async function createPrivateRoom() {
 
   const myWallet = window.TapStarWallet?.getAddress();
   if (!myWallet) { showToast('Connect your wallet first'); return; }
+
+  const affordCheck = window.TapStarWallet?.canAffordStake(stake);
+  if (affordCheck && !affordCheck.ok) { showToast(affordCheck.reason); return; }
 
   try {
     const idToken = await firebase.auth().currentUser.getIdToken();

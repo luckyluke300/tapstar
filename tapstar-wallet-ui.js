@@ -72,6 +72,10 @@
           <div class="ts-modal-box">
             <div class="ts-modal-title">WITHDRAW FROM HAND</div>
             <div class="ts-modal-sub">Move funds from your in-game Hand back to your wallet.</div>
+            <div class="ts-cooldown-banner" id="tsWdrCooldown" style="display:none">
+              <span class="ts-cooldown-icon">⏳</span>
+              COOLDOWN ACTIVE — AVAILABLE IN <span id="tsWdrCooldownTimer">—</span>
+            </div>
             <div class="ts-modal-balances">
               <div class="ts-mb-cell"><div class="ts-mb-label">WALLET</div><div class="ts-mb-val" id="tsWdrWallet">—</div></div>
               <div class="ts-mb-cell"><div class="ts-mb-label">HAND</div><div class="ts-mb-val" id="tsWdrHand">—</div></div>
@@ -204,6 +208,7 @@
     function closeModal(id) {
       const m = document.getElementById(id);
       if (m) m.classList.remove('show');
+      if (id === 'tsModalWithdraw') stopCooldownTimer();
       // clear inputs
       m?.querySelectorAll('input').forEach(i => i.value = '');
       m?.querySelectorAll('.ts-modal-error').forEach(e => e.textContent = '');
@@ -218,12 +223,58 @@
       openModal('tsModalDeposit');
     }
 
-    function openWithdrawModal() {
+    let cooldownInterval = null;
+
+    function stopCooldownTimer() {
+      if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
+    }
+
+    function fmtCooldown(secs) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }
+
+    function setCooldownUI(secs) {
+      const banner   = document.getElementById('tsWdrCooldown');
+      const timer    = document.getElementById('tsWdrCooldownTimer');
+      const wdrBtn   = document.getElementById('tsWdrGo');
+      const allBtn   = document.getElementById('tsWdrAllGo');
+      const amtInput = document.getElementById('tsWdrAmount');
+      if (!banner) return;
+      if (secs > 0) {
+        banner.style.display = 'flex';
+        timer.textContent    = fmtCooldown(secs);
+        wdrBtn.disabled      = true;
+        allBtn.disabled      = true;
+        amtInput.disabled    = true;
+      } else {
+        banner.style.display = 'none';
+        wdrBtn.disabled      = false;
+        allBtn.disabled      = false;
+        amtInput.disabled    = false;
+      }
+    }
+
+    async function openWithdrawModal() {
       const s = W.getState();
       if (!s.connected) { W.connect(); return; }
       document.getElementById('tsWdrWallet').textContent = fmt(s.walletEth) + ' ' + s.currency;
       document.getElementById('tsWdrHand').textContent   = fmt(s.handEth)   + ' ' + s.currency;
       openModal('tsModalWithdraw');
+
+      // Check V4 cooldown
+      stopCooldownTimer();
+      let remaining = await W.getCooldownRemaining();
+      setCooldownUI(remaining);
+
+      if (remaining > 0) {
+        cooldownInterval = setInterval(() => {
+          remaining = Math.max(0, remaining - 1);
+          setCooldownUI(remaining);
+          if (remaining <= 0) stopCooldownTimer();
+        }, 1000);
+      }
     }
 
     function wireModalActions() {

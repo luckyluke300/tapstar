@@ -61,6 +61,7 @@ const ABI = [
   'function withdraw(uint256 amount) external',
   'function withdrawAll() external',
   'function balances(address) external view returns (uint256)',
+  'function cooldownRemaining(address) external view returns (uint256)',
   'function minStake() external view returns (uint256)',
   'function maxStake() external view returns (uint256)',
   'function houseFeeBps() external view returns (uint16)',
@@ -430,6 +431,18 @@ function canAffordStake(stakeEth) {
   return { ok: true };
 }
 
+// Returns seconds until the user can withdraw (0 = ready now).
+// V4 contract only — returns 0 gracefully if the call fails (e.g. V3).
+async function getCooldownRemaining() {
+  if (!state.contract || !state.address) return 0;
+  try {
+    const secs = await state.contract.cooldownRemaining(state.address);
+    return Number(secs);
+  } catch {
+    return 0;
+  }
+}
+
 function explorerTx(hash) {
   return CHAIN.explorerBase + '/tx/' + hash;
 }
@@ -447,6 +460,7 @@ const TapStarWallet = {
   withdrawAll,
   refreshBalances,
   canAffordStake,
+  getCooldownRemaining,
   explorerTx,
   // ── Phase 3 additions ─────────────────────────────────────────
   settleMatch,
