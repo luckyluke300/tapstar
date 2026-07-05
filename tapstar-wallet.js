@@ -46,13 +46,13 @@ const CHAINS = {
   base: {
     network: base,
     chainId: 8453,
-    contractAddress: '0x0000000000000000000000000000000000000000', // TODO: deploy
+    contractAddress: '0xA0EC29013735f82fD9a494aCe375b86eBEb266D0', // TODO: deploy
     currencySymbol: 'ETH',
     explorerBase: 'https://basescan.org'
   }
 };
 
-const ACTIVE_CHAIN = 'sepolia';   // ← flip to 'base' for production
+const ACTIVE_CHAIN = 'base'; 
 const CHAIN = CHAINS[ACTIVE_CHAIN];
 
 // Minimal ABI — only the functions the frontend calls.
