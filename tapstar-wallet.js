@@ -2,60 +2,25 @@
 //   TAPSTAR · WALLET MODULE  (Phase 2)
 // ───────────────────────────────────────────────────────────────────────────
 //   On-chain integration: WalletConnect (Reown AppKit) + ethers.js
-//   Connects to TapStarArenaV2 vault contract, manages Hand balance,
+//   Connects to TapStarArenaV4 vault contract, manages Hand balance,
 //   deposit / withdraw flows, and exposes a clean API for the game.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── ESM imports via esm.sh CDN ────────────────────────────────────────────
-import {
-  createAppKit
-} from 'https://esm.sh/@reown/appkit@1.6.5?bundle';
-import {
-  EthersAdapter
-} from 'https://esm.sh/@reown/appkit-adapter-ethers@1.6.5?bundle';
-import {
-  sepolia,
-  base
-} from 'https://esm.sh/@reown/appkit/networks?bundle';
-import {
-  BrowserProvider,
-  Contract,
-  formatEther,
-  parseEther,
-  isAddress
-} from 'https://esm.sh/ethers@6.13.4';
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   CONFIG
-// ═══════════════════════════════════════════════════════════════════════════
-//   To switch from Sepolia testnet → Base mainnet later, change `ACTIVE_CHAIN`
-//   to 'base', deploy the contract on Base, and paste the new address.
-//   The rest of the codebase doesn't need to change.
-// ═══════════════════════════════════════════════════════════════════════════
+import { createAppKit } from 'https://esm.sh/@reown/appkit@1.6.5?bundle';
+import { EthersAdapter } from 'https://esm.sh/@reown/appkit-adapter-ethers@1.6.5?bundle';
+import { base } from 'https://esm.sh/@reown/appkit/networks?bundle';
+import { BrowserProvider, Contract, formatEther, parseEther } from 'https://esm.sh/ethers@6.13.4';
 
 const REOWN_PROJECT_ID = '7c52e30ca0d5daacaf65beb6d2249013';
 
-const CHAINS = {
-  sepolia: {
-    network: sepolia,
-    chainId: 11155111,
-    contractAddress: '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4',
-    currencySymbol: 'tETH',           // displayed in UI (test ETH)
-    explorerBase: 'https://sepolia.etherscan.io'
-  },
-  base: {
-    network: base,
-    chainId: 8453,
-    contractAddress: '0xA0EC29013735f82fD9a494aCe375b86eBEb266D0', // TODO: deploy
-    currencySymbol: 'ETH',
-    explorerBase: 'https://basescan.org'
-  }
+const CHAIN = {
+  network: base,
+  chainId: 8453,
+  contractAddress: '0xA0EC29013735f82fD9a494aCe375b86eBEb266D0',
+  currencySymbol: 'ETH',
+  explorerBase: 'https://basescan.org'
 };
 
-const ACTIVE_CHAIN = 'base'; 
-const CHAIN = CHAINS[ACTIVE_CHAIN];
-
-// Minimal ABI — only the functions the frontend calls.
 const ABI = [
   'function deposit() external payable',
   'function withdraw(uint256 amount) external',
@@ -75,25 +40,21 @@ const ABI = [
   'event MatchRefunded(bytes32 indexed matchId, address indexed p1, address indexed p2, uint256 stake)'
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════
-//   STATE
-// ═══════════════════════════════════════════════════════════════════════════
-
 const state = {
   appKit: null,
-  provider: null,        // ethers BrowserProvider wrapping AppKit's EIP-1193
-  signer: null,          // ethers JsonRpcSigner
-  contract: null,        // ethers Contract bound to the signer
-  address: null,         // connected wallet address
-  walletEth: 0,          // native balance (in ETH, float)
-  handEth: 0,            // contract balance for this user (in ETH, float)
+  provider: null,
+  signer: null,
+  contract: null,
+  address: null,
+  walletEth: 0,
+  handEth: 0,
   minStakeEth: 0,
   maxStakeEth: 0,
   houseFeeBps: 1000,
   isCorrectChain: false,
   pollHandle: null,
-  activeMatchId: null,   // set by tapstar-settle.js while a match is in progress
-  listeners: new Set()   // subscribers for state changes
+  activeMatchId: null,
+  listeners: new Set()
 };
 
 function emit(event) {
@@ -121,10 +82,6 @@ function getPublicState() {
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//   INITIALIZATION
-// ═══════════════════════════════════════════════════════════════════════════
-
 function init() {
   if (state.appKit) return;
 
@@ -139,20 +96,15 @@ function init() {
       url: window.location.origin,
       icons: [window.location.origin + '/favicon.ico']
     },
-    features: {
-      analytics: false,
-      email: false,
-      socials: false
-    },
+    features: { analytics: false, email: false, socials: false },
     themeMode: 'dark',
     themeVariables: {
-      '--w3m-accent':       '#00ffcc',
-      '--w3m-color-mix':    '#040810',
+      '--w3m-accent': '#00ffcc',
+      '--w3m-color-mix': '#040810',
       '--w3m-border-radius-master': '2px'
     }
   });
 
-  // Subscribe to AppKit account/network changes.
   state.appKit.subscribeAccount(async (acc) => {
     if (acc.isConnected && acc.address) {
       state.address = acc.address;
@@ -171,13 +123,12 @@ function init() {
 async function onConnected() {
   try {
     const ethProvider = state.appKit.getProvider('eip155');
-    if (!ethProvider) throw new Error('No EIP-1193 provider from AppKit');
+    if (!ethProvider) throw new Error('No EIP-1193 provider');
 
     state.provider = new BrowserProvider(ethProvider);
     state.signer   = await state.provider.getSigner();
     state.contract = new Contract(CHAIN.contractAddress, ABI, state.signer);
 
-    // Confirm chain
     const network = await state.provider.getNetwork();
     state.isCorrectChain = Number(network.chainId) === CHAIN.chainId;
 
@@ -185,13 +136,8 @@ async function onConnected() {
       try { await state.appKit.switchNetwork(CHAIN.network); } catch {}
     }
 
-    // Load contract limits ONCE (immutable for a given session)
     await loadContractLimits();
-
-    // Wire contract events for live balance updates
     wireContractListeners();
-
-    // Refresh balances now and on a schedule
     await refreshBalances();
     startPolling();
 
@@ -224,14 +170,8 @@ async function loadContractLimits() {
     state.minStakeEth = parseFloat(formatEther(minS));
     state.maxStakeEth = parseFloat(formatEther(maxS));
     state.houseFeeBps = Number(fee);
-  } catch (e) {
-    console.warn('[wallet] limits load failed', e);
-  }
+  } catch (e) { console.warn('[wallet] limits load failed', e); }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   BALANCE REFRESH
-// ═══════════════════════════════════════════════════════════════════════════
 
 async function refreshBalances() {
   if (!state.address || !state.provider || !state.contract) return;
@@ -243,14 +183,11 @@ async function refreshBalances() {
     state.walletEth = parseFloat(formatEther(walletWei));
     state.handEth   = parseFloat(formatEther(handWei));
     emit('balancesUpdated');
-  } catch (e) {
-    console.warn('[wallet] balance refresh failed', e);
-  }
+  } catch (e) { console.warn('[wallet] balance refresh failed', e); }
 }
 
 function startPolling() {
   if (state.pollHandle) return;
-  // Poll every 15s as a safety net even though we listen to events
   state.pollHandle = setInterval(refreshBalances, 15000);
 }
 
@@ -258,10 +195,6 @@ function stopPolling() {
   if (state.pollHandle) clearInterval(state.pollHandle);
   state.pollHandle = null;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   CONTRACT EVENT LISTENERS
-// ═══════════════════════════════════════════════════════════════════════════
 
 let activeFilters = [];
 
@@ -299,13 +232,8 @@ function unwireContractListeners() {
   activeFilters = [];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//   USER ACTIONS
-// ═══════════════════════════════════════════════════════════════════════════
-
 async function connect() {
   init();
-  if (!state.appKit) throw new Error('AppKit not initialized');
   await state.appKit.open();
 }
 
@@ -318,8 +246,6 @@ async function disconnect() {
 async function deposit(amountEth) {
   ensureReady();
   const value = parseEther(String(amountEth));
-  if (value <= 0n) throw new Error('Amount must be greater than 0');
-
   const tx = await state.contract.deposit({ value });
   emit('txSent', { type: 'deposit', hash: tx.hash, amount: amountEth });
   const receipt = await tx.wait();
@@ -331,9 +257,7 @@ async function deposit(amountEth) {
 async function withdraw(amountEth) {
   ensureReady();
   const amt = parseEther(String(amountEth));
-  if (amt <= 0n) throw new Error('Amount must be greater than 0');
   if (state.activeMatchId) throw new Error('Cannot withdraw during an active match');
-
   const tx = await state.contract.withdraw(amt);
   emit('txSent', { type: 'withdraw', hash: tx.hash, amount: amountEth });
   const receipt = await tx.wait();
@@ -359,30 +283,15 @@ function ensureReady() {
   if (!state.isCorrectChain) throw new Error('Wrong network — please switch chain');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//   ACTIVE MATCH GUARD
-//   Settle module marks/unmarks the active match here so we can disable
-//   withdrawals while a stake is "soft-locked" off-chain. This is Option A
-//   from our design — defense-in-depth, not absolute.
-// ═══════════════════════════════════════════════════════════════════════════
-
 function setActiveMatch(matchId) {
   state.activeMatchId = matchId || null;
   emit('activeMatchChanged');
 }
 
-function getActiveMatch() {
-  return state.activeMatchId || null;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   ON-CHAIN SETTLEMENT
-//   These call TapStarArenaV3 with a Worker-issued signature.
-// ═══════════════════════════════════════════════════════════════════════════
+function getActiveMatch() { return state.activeMatchId || null; }
 
 async function settleMatch({ matchId, winner, loser, stake, deadline, signature }) {
   ensureReady();
-  // Idempotency: check if already settled, return early
   const already = await state.contract.settledMatches(matchId);
   if (already) {
     emit('matchAlreadySettled', { matchId });
@@ -418,63 +327,30 @@ async function isMatchSettled(matchId) {
   try { return await state.contract.settledMatches(matchId); } catch { return false; }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//   STAKE VALIDATION HELPERS  (used by lobby + room screens)
-// ═══════════════════════════════════════════════════════════════════════════
-
 function canAffordStake(stakeEth) {
   if (!state.address) return { ok: false, reason: 'Connect a wallet first' };
-  if (!state.isCorrectChain) return { ok: false, reason: 'Switch to ' + CHAIN.network.name };
-  if (stakeEth < state.minStakeEth) return { ok: false, reason: `Min stake: ${state.minStakeEth} ${CHAIN.currencySymbol}` };
-  if (stakeEth > state.maxStakeEth) return { ok: false, reason: `Max stake: ${state.maxStakeEth} ${CHAIN.currencySymbol}` };
-  if (stakeEth > state.handEth)     return { ok: false, reason: `Top up your Hand (need ${stakeEth} ${CHAIN.currencySymbol})` };
+  if (!state.isCorrectChain) return { ok: false, reason: 'Switch to Base Mainnet' };
+  if (stakeEth < state.minStakeEth) return { ok: false, reason: `Min stake: ${state.minStakeEth} ETH` };
+  if (stakeEth > state.maxStakeEth) return { ok: false, reason: `Max stake: ${state.maxStakeEth} ETH` };
+  if (stakeEth > state.handEth)     return { ok: false, reason: `Top up Hand (need ${stakeEth} ETH)` };
   return { ok: true };
 }
 
-// Returns seconds until the user can withdraw (0 = ready now).
-// V4 contract only — returns 0 gracefully if the call fails (e.g. V3).
 async function getCooldownRemaining() {
   if (!state.contract || !state.address) return 0;
   try {
     const secs = await state.contract.cooldownRemaining(state.address);
     return Number(secs);
-  } catch {
-    return 0;
-  }
+  } catch { return 0; }
 }
 
-function explorerTx(hash) {
-  return CHAIN.explorerBase + '/tx/' + hash;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   PUBLIC API
-// ═══════════════════════════════════════════════════════════════════════════
+function explorerTx(hash) { return CHAIN.explorerBase + '/tx/' + hash; }
 
 const TapStarWallet = {
-  init,
-  connect,
-  disconnect,
-  deposit,
-  withdraw,
-  withdrawAll,
-  refreshBalances,
-  canAffordStake,
-  getCooldownRemaining,
-  explorerTx,
-  // ── Phase 3 additions ─────────────────────────────────────────
-  settleMatch,
-  refundMatch,
-  isMatchSettled,
-  setActiveMatch,
-  getActiveMatch,
-  // ──────────────────────────────────────────────────────────────
-  getState: getPublicState,
-  onChange(fn) {
-    state.listeners.add(fn);
-    return () => state.listeners.delete(fn);
-  },
-  // Helper for downstream (Phase 3 — match settlement uses these)
+  init, connect, disconnect, deposit, withdraw, withdrawAll, refreshBalances,
+  canAffordStake, getCooldownRemaining, explorerTx, settleMatch, refundMatch,
+  isMatchSettled, setActiveMatch, getActiveMatch, getState: getPublicState,
+  onChange(fn) { state.listeners.add(fn); return () => state.listeners.delete(fn); },
   getAddress() { return state.address; },
   getSigner()  { return state.signer; },
   getContract(){ return state.contract; },
@@ -483,10 +359,4 @@ const TapStarWallet = {
 
 window.TapStarWallet = TapStarWallet;
 export default TapStarWallet;
-
-// ═══════════════════════════════════════════════════════════════════════════
-//   AUTO-INIT
-//   We call init() immediately so AppKit is ready by the time the user
-//   clicks "Connect Wallet". Connection itself still requires user action.
-// ═══════════════════════════════════════════════════════════════════════════
 init();

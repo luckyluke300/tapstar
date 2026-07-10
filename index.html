@@ -118,7 +118,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .room-waiting-spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;}
 
 /* ── GAME SCREEN ── */
-.game-screen-inner{max-width:900px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:12px;width:100%;}
+.game-screen-inner{max-width:900px;margin:0 auto;padding:10px 20px;display:flex;flex-direction:column;gap:10px;width:100%;min-height:calc(100vh - 80px);justify-content:center;}
 .score-bar{display:flex;justify-content:space-between;align-items:center;}
 .player-score{font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;}
 .player-score.p1{color:var(--p1);text-shadow:0 0 20px rgba(0,255,204,.5);}
@@ -145,7 +145,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .pc-indicator.show{display:block;}
 
 /* ── ARENA + CELLS ── */
-#arena{display:grid;width:100%;gap:2px;user-select:none;-webkit-user-select:none;}
+#arena{display:grid;width:100%;max-width:min(100%, 48vh);margin:0 auto;gap:2px;user-select:none;-webkit-user-select:none;}
 .cell{aspect-ratio:1;border-radius:2px;cursor:pointer;transition:transform .08s;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
 .cell::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.15);opacity:0;transition:opacity .1s;}
 .cell:active::after{opacity:1;}
@@ -162,7 +162,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 @keyframes spinPow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* ── TAP BUTTONS ── */
-.tap-area{display:flex;gap:12px;width:100%;}
+.tap-area{display:flex;gap:12px;width:100%;max-width:min(100%, 48vh);margin:0 auto;}
 .tap-area .tap-btn{flex:1;}
 .tap-area.vs-pc{display:grid;grid-template-columns:1fr 1fr;}
 .tap-btn{padding:20px;font-family:'Orbitron',monospace;font-weight:900;font-size:1.1rem;letter-spacing:3px;border:none;cursor:pointer;transition:all .08s;text-transform:uppercase;position:relative;overflow:hidden;}
@@ -346,8 +346,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <span style="color:#ff3366;font-weight:bold;">⚠ BETA</span>
   <span>
     TAPSTAR is in active development · running on
-    <span style="color:#ffd700;">SEPOLIA TESTNET</span> ·
-    do not deposit real money · matches do not pay out yet
+    <span style="color:#ffd700;">BASE MAINNET</span>
   </span>
   <button onclick="document.getElementById('ts-beta-banner').style.display='none'" style="
     background:transparent;
@@ -360,7 +359,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   " onmouseover="this.style.background='rgba(255,51,102,.15)'" onmouseout="this.style.background='transparent'">DISMISS</button>
 </div>
 <style>
-  /* Push the rest of the page down so the banner doesn't overlap the lobby header */
   body { padding-top: 44px !important; }
   @media (max-width: 600px) {
     #ts-beta-banner { font-size: .62rem; padding: 8px 10px; gap: 8px; }
@@ -410,12 +408,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <button class="hbtn" id="lobbyWalletBtn" onclick="connectWalletLobby()">[ CONNECT WALLET ]</button>
     </div>
   </div>
-  <div class="network-warn" id="networkWarn">⚠ WRONG NETWORK — SWITCH TO POLYGON IN METAMASK</div>
+  <div class="network-warn" id="networkWarn">⚠ WRONG NETWORK — SWITCH IN WALLET</div>
   <div class="profile-card">
     <div class="profile-username" id="profileUsername">—</div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileWins">0</div><div class="profile-stat-label">WINS</div></div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileLosses">0</div><div class="profile-stat-label">LOSSES</div></div>
-    <div class="profile-stat"><div class="profile-stat-val" id="profilePol">0.00</div><div class="profile-stat-label">POL WON</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="profilePol">0.00</div><div class="profile-stat-label">ETH WON</div></div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileStreak">0</div><div class="profile-stat-label">STREAK</div></div>
   </div>
   <div class="wallet-row">
@@ -427,7 +425,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <button class="mode-btn pvp" onclick="startQuickMatch()">
       <span class="mode-btn-icon">⚔</span>
       QUICK MATCH
-      <span class="mode-btn-sub">RANDOM OPPONENT · FIXED 1 POL STAKE</span>
+      <span class="mode-btn-sub">RANDOM OPPONENT · 0.001 ETH STAKE</span>
     </button>
     <button class="mode-btn private" onclick="showScreen('screen-room')">
       <span class="mode-btn-icon">🔒</span>
@@ -449,7 +447,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="mm-spinner"></div>
     <div class="mm-player-card">
       <div class="mm-player-name" id="mmPlayerName">—</div>
-      <div class="mm-stake">STAKE: 1 POL</div>
+      <div class="mm-stake">STAKE: 0.001 ETH</div>
     </div>
     <div class="mm-sub" id="mmStatus">// SCANNING FOR AVAILABLE PLAYERS...</div>
     <button class="cancel-btn" onclick="cancelMatchmaking()">[ CANCEL ]</button>
@@ -532,7 +530,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <button class="pc-back-btn" onclick="showScreen('screen-lobby')">← BACK TO LOBBY</button>
   <div class="panel" style="text-align:center;padding:14px 20px 10px">
     <span class="free-badge">✦ FREE TO PLAY — NO WALLET NEEDED ✦</span>
-    <div class="section-title" style="margin-bottom:0">PRACTICE BEFORE STAKING REAL POL</div>
+    <div class="section-title" style="margin-bottom:0">PRACTICE BEFORE STAKING REAL ETH</div>
   </div>
   <div class="panel">
     <div class="section-title">// SELECT DIFFICULTY</div>
@@ -572,8 +570,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       </div>
     </div>
     <div class="stake-info-bar">
-      <div class="stake-info-item">STAKED: <span id="displayStake">1</span> POL EACH</div>
-      <div class="stake-info-item">POT: <span id="displayPot">2</span> POL</div>
+      <div class="stake-info-item">STAKED: <span id="displayStake">0.000 ETH</span> EACH</div>
+      <div class="stake-info-item">POT: <span id="displayPot">0.000 ETH</span></div>
+      <div class="stake-info-item curr-toggle" style="cursor:pointer; color:var(--p1); font-weight:bold; border-bottom:1px dashed var(--p1);" onclick="toggleCurrency()">[ ⇄ SHOW USD ]</div>
       <div class="stake-info-item">MODE: <span id="displayMode">DUEL</span></div>
     </div>
     <div class="territory-bar"><div class="territory-fill" id="territoryFill" style="width:50%"></div></div>
@@ -617,7 +616,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="result-stat"><div class="result-stat-val" id="finalScore2" style="color:var(--p2)">0</div><div class="result-stat-label">OPP CELLS</div></div>
   </div>
   <div class="payout-box">
-    <div class="payout-amount" id="payoutAmount">+0.19 POL</div>
+    <div class="payout-amount" id="payoutAmount">+0.000 ETH</div>
     <div class="payout-label" id="payoutLabel">WINNER PAYOUT</div>
   </div>
   <div class="unlock-box" id="unlockBox" style="display:none">
@@ -682,6 +681,34 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 'use strict';
 
 // ═══════════════════════════════════════════════════════════
+//  CURRENCY & ETH PRICE FETCH
+// ═══════════════════════════════════════════════════════════
+let currencyMode = 'ETH';
+let ethUsdRate = 3000; // default fallback
+
+fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+  .then(r => r.json())
+  .then(d => { if (d.ethereum?.usd) ethUsdRate = d.ethereum.usd; })
+  .catch(e => console.warn('CoinGecko fetch failed', e));
+
+function formatCurrency(ethVal) {
+  if (currencyMode === 'USD') return '$' + (ethVal * ethUsdRate).toFixed(2);
+  return ethVal.toFixed(4) + ' ETH';
+}
+
+function toggleCurrency() {
+  currencyMode = currencyMode === 'ETH' ? 'USD' : 'ETH';
+  document.querySelectorAll('.curr-toggle').forEach(el => {
+    el.textContent = `[ ⇄ SHOW ${currencyMode === 'ETH' ? 'USD' : 'ETH'} ]`;
+  });
+  
+  if (document.getElementById('screen-game').classList.contains('active') && !isVsPC) {
+    document.getElementById('displayStake').textContent = formatCurrency(stakeAmount);
+    document.getElementById('displayPot').textContent   = formatCurrency(stakeAmount * 2);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  FIREBASE CONFIG
 // ═══════════════════════════════════════════════════════════
 const firebaseConfig = {
@@ -702,14 +729,6 @@ let cellTimestamps = {}; // Track when each cell was captured
 
 // ═══════════════════════════════════════════════════════════
 //  CLOCK SYNC — Shared time across both players via Firebase
-//  
-//  Date.now() returns each device's local clock, which can differ
-//  by seconds between phones/computers. That made sync conflict
-//  resolution unfair: whoever's clock was ahead always "won."
-//  
-//  Firebase exposes its server clock offset at .info/serverTimeOffset.
-//  Both devices subscribe to it, so sharedNow() returns approximately
-//  the same value on both ends regardless of local clock drift.
 // ═══════════════════════════════════════════════════════════
 let clockOffset = 0;
 function sharedNow() { return Date.now() + clockOffset; }
@@ -720,7 +739,6 @@ try {
   db        = firebase.database();
   firestore = firebase.firestore();
   firebaseReady = true;
-  // Subscribe to server clock offset — keeps clockOffset accurate throughout the session
   db.ref('.info/serverTimeOffset').on('value', snap => {
     const v = snap.val();
     if (typeof v === 'number') clockOffset = v;
@@ -785,9 +803,9 @@ const ALL_MEDALS = [
     type:'achievement', condition:s=>s.pvpWins>=50,    progress:s=>Math.min(s.pvpWins||0,50),     target:50  },
   { id:'ai_insane', emoji:'💀', name:'INSANE SLAYER',  desc:'Beat Insane AI once.',
     type:'achievement', condition:s=>(s.aiWins?.insane||0)>=1, progress:s=>Math.min(s.aiWins?.insane||0,1), target:1 },
-  { id:'pol_1',    emoji:'💰', name:'FIRST EARNINGS',  desc:'Earn 1 POL total.',
+  { id:'pol_1',    emoji:'💰', name:'FIRST EARNINGS',  desc:'Earn 1 ETH total.',
     type:'achievement', condition:s=>s.totalPolWon>=1,   progress:s=>Math.min(s.totalPolWon||0,1),   target:1  },
-  { id:'pol_100',  emoji:'🤑', name:'POL WHALE',       desc:'Earn 100 POL total.',
+  { id:'pol_100',  emoji:'🤑', name:'ETH WHALE',       desc:'Earn 100 ETH total.',
     type:'achievement', condition:s=>s.totalPolWon>=100, progress:s=>Math.min(s.totalPolWon||0,100), target:100},
   { id:'streak_5', emoji:'🌶️', name:'ON FIRE',         desc:'Win 5 in a row.',
     type:'achievement', condition:s=>s.bestStreak>=5,    progress:s=>Math.min(s.bestStreak||0,5),    target:5  },
@@ -838,59 +856,44 @@ let currentLbPeriod = 'daily';
 
 // ═══════════════════════════════════════════════════════════
 //  FULL RESET — Called before every game starts
-//  This guarantees no stale state from previous games
 // ═══════════════════════════════════════════════════════════
 function fullResetGameState() {
-  // Clear ALL intervals with safety checks
   if (timerInterval)     { clearInterval(timerInterval);     timerInterval = null; }
   if (aiInterval)        { clearInterval(aiInterval);        aiInterval = null; }
   if (syncInterval)      { clearInterval(syncInterval);      syncInterval = null; }
   if (powerInterval)     { clearInterval(powerInterval);     powerInterval = null; }
   if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
   
-  // Cancel any pending onDisconnect handlers
   for (const ref of disconnectRefs) {
     try { ref.onDisconnect().cancel(); } catch (e) {}
   }
   disconnectRefs = [];
   disconnectFRRef = null;
 
-  // Clear debounced sync timer
   if (invadeCell._syncTimer) {
     clearTimeout(invadeCell._syncTimer);
     invadeCell._syncTimer = null;
   }
   
-  // Reset ALL game state flags
   gameRunning = false;
   matchEnded = false;
   countdownActive = false;
   gameStartTime = null;
   
-  // Reset counters
-  taps1 = 0;
-  taps2 = 0;
-  combo1 = 1;
-  combo2 = 1;
-  lastTap1 = 0;
-  lastTap2 = 0;
+  taps1 = 0; taps2 = 0;
+  combo1 = 1; combo2 = 1;
+  lastTap1 = 0; lastTap2 = 0;
   opponentScore = 0;
   opponentMedalEmoji = null;
   wasLosingMidgame = false;
   timeLeft = 0;
   
-  // Reset sync state
   lastSyncTimestamp = 0;
   cellTimestamps = {};
   
-  // Clear grid and power-ups
   cells = [];
   powerCells.clear();
   
-  // ========== EXPLICIT UI RESET ==========
-  // This is critical — without it, stale values from the previous game
-  // stay visible until initGrid/startTimer run. If those fail for any
-  // reason, the user sees a "frozen" screen with old data.
   const score1El = document.getElementById('score1');
   const score2El = document.getElementById('score2');
   const timerEl  = document.getElementById('timer');
@@ -903,33 +906,28 @@ function fullResetGameState() {
   
   if (score1El) score1El.textContent = '0';
   if (score2El) score2El.textContent = '0';
-  if (timerEl)  { 
-    timerEl.textContent = '—';
-    timerEl.classList.remove('urgent'); 
-  }
+  if (timerEl)  { timerEl.textContent = '—'; timerEl.classList.remove('urgent'); }
   if (tc1)      tc1.textContent = '0 TAPS';
   if (tc2)      tc2.textContent = '0 TAPS';
   if (c1)       { c1.textContent = 'YOU COMBO x1'; c1.classList.remove('hot'); }
   if (c2)       { c2.textContent = 'OPP COMBO x1'; c2.classList.remove('hot'); }
   if (tf)       tf.style.width = '50%';
-  if (arena)    arena.innerHTML = ''; // Clear old cells from DOM
+  if (arena)    arena.innerHTML = ''; 
   
-  // Hide any lingering overlays (in case of weird state)
   const resultOv = document.getElementById('result-overlay');
   if (resultOv) resultOv.classList.remove('show');
 }
 
-// Online PvP state
 let currentRoomCode = null;
-let myPlayerNum     = 1; // 1 or 2
+let myPlayerNum     = 1;
 let opponentName    = '—';
-let mmListenerRef   = null; // Firebase ref for the queued-player's player_match listener
+let mmListenerRef   = null;
 const WORKER_URL    = 'https://tapstar-signer.gregmuco1.workers.dev';
-let roomRef         = null; // Firebase ref for current room
+let roomRef         = null;
 let presenceRef     = null;
 let opponentScore   = 0;
-let gameStartTime   = null; // Timestamp when current game started
-let opponentMedalEmoji = null; // Opponent's equipped medal emoji (synced or AI-assigned)
+let gameStartTime   = null;
+let opponentMedalEmoji = null;
 
 // ═══════════════════════════════════════════════════════════
 //  LOCAL STORAGE HELPERS
@@ -947,14 +945,9 @@ function saveOwnedMedals(a)  { LS.set('tapstar_owned', a); }
 function hasMedal(id)        { return getOwnedMedals().includes(id); }
 function grantMedal(id)      { const o=getOwnedMedals(); if(!o.includes(id)){o.push(id);saveOwnedMedals(o);return true;}return false; }
 function getMedalById(id)    { return ALL_MEDALS.find(m=>m.id===id)||null; }
-// Returns the medal emoji for a given player number in the current game.
-// If it's ME (myPlayerNum), return my equipped medal.
-// If it's the OPPONENT, return the opponent's medal (synced from them, or AI's random emoji).
+
 function getMedalEmoji(player) {
-  if (player === myPlayerNum) {
-    return getMedalById(equippedMedalId)?.emoji || null;
-  }
-  // Opponent (either a remote player or the AI)
+  if (player === myPlayerNum) return getMedalById(equippedMedalId)?.emoji || null;
   return opponentMedalEmoji || null;
 }
 
@@ -967,109 +960,6 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  WALLET CONNECTION
-// ═══════════════════════════════════════════════════════════
-/* let walletListenersSet = false; // Flag to ensure listeners are set only once
-
-async function connectWalletAuth() {
-  walletAddress = await doConnectWallet();
-  const el = document.getElementById('authWalletStatus');
-  if (walletAddress) {
-    el.textContent = '✓ WALLET LINKED: ' + walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-    el.classList.add('connected');
-  }
-}
-
-async function connectWalletLobby() {
-  walletAddress = await doConnectWallet();
-  if (walletAddress) {
-    updateLobbyWalletUI();
-    if (currentUser && firebaseReady) {
-      firestore.collection('users').doc(currentUser.uid).update({ walletAddress }).catch(() => {});
-    }
-    if (currentUser) currentUser.walletAddress = walletAddress;
-  }
-}
-
-async function doConnectWallet() {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (!window.ethereum) {
-    if (isMobile) {
-      const deepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
-      showToast('📲 Open this page in MetaMask browser to connect');
-      setTimeout(() => {
-        if (confirm('Open in MetaMask browser?')) window.location.href = deepLink;
-      }, 300);
-    } else {
-      showToast('🦊 MetaMask not found — install at metamask.io');
-    }
-    return null;
-  }
-
-  try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || accounts.length === 0) { showToast('No accounts found'); return null; }
-    const addr = accounts[0];
-
-    // Set event listeners only once
-    if (!walletListenersSet) {
-      window.ethereum.on('accountsChanged', a => { 
-        if (a.length > 0) {
-          walletAddress = a[0]; 
-          updateLobbyWalletUI(); 
-        }
-      });
-      window.ethereum.on('chainChanged', () => window.location.reload());
-      walletListenersSet = true;
-    }
-
-    // Check and switch chain if needed
-    window.ethereum.request({ method: 'eth_chainId' }).then(chainId => {
-      if (chainId !== POLYGON_CHAIN_ID && chainId !== POLYGON_TESTNET_ID) {
-        document.getElementById('networkWarn')?.classList.add('show');
-        window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: POLYGON_CHAIN_ID }]
-        }).then(() => {
-          document.getElementById('networkWarn')?.classList.remove('show');
-        }).catch(() => {});
-      }
-    }).catch(() => {});
-
-    // Fetch balance but update UI regardless
-    window.ethereum.request({ method: 'eth_getBalance', params: [addr, 'latest'] }).then(hex => {
-      walletBalance = parseInt(hex, 16) / 1e18;
-    }).catch(() => {
-      walletBalance = 0; // Default to 0 on error
-    }).finally(() => {
-      updateLobbyWalletUI();
-    });
-
-    showToast('✓ Wallet connected!');
-    return addr;
-
-  } catch(err) {
-    if (err.code === 4001) { showToast('❌ Wallet connection rejected'); }
-    else { showToast('⚠️ Wallet error: ' + (err.message || 'unknown')); }
-    return null;
-  }
-}
-
-function updateLobbyWalletUI() {
-  if (!walletAddress) return;
-  const short = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-  const btn = document.getElementById('lobbyWalletBtn');
-  const addrEl = document.getElementById('lobbyWalletAddr');
-  const balEl = document.getElementById('lobbyWalletBal');
-  const inlineBtn = document.getElementById('lobbyWalletInline');
-  if (btn) { btn.textContent = '[ '+short+' ]'; btn.classList.add('connected'); }
-  if (addrEl) addrEl.textContent = short;
-  if (balEl) balEl.textContent = walletBalance.toFixed(4) + ' POL';
-  if (inlineBtn) inlineBtn.style.display = 'none';
-}
-*/
 // ═══════════════════════════════════════════════════════════
 //  AUTH CONNECTION
 // ═══════════════════════════════════════════════════════════
@@ -1095,7 +985,6 @@ async function initApp() {
         loadLobby();
         showScreen('screen-lobby');
       } else {
-        // Logged in but no profile → shouldn't happen, send to auth
         await auth.signOut();
         showScreen('screen-auth');
       }
@@ -1126,22 +1015,10 @@ async function createAccount() {
   const errEl = document.getElementById('authError');
   errEl.textContent = '';
 
-  if (!email || !email.includes('@')) {
-    errEl.textContent = '// INVALID EMAIL ADDRESS';
-    return;
-  }
-  if (password.length < 6) {
-    errEl.textContent = '// PASSWORD MUST BE AT LEAST 6 CHARACTERS';
-    return;
-  }
-  if (usernameRaw.length < 3) {
-    errEl.textContent = '// USERNAME TOO SHORT — MINIMUM 3 CHARACTERS';
-    return;
-  }
-  if (!/^[A-Z0-9_]+$/.test(usernameRaw)) {
-    errEl.textContent = '// INVALID CHARACTERS — LETTERS, NUMBERS, UNDERSCORE ONLY';
-    return;
-  }
+  if (!email || !email.includes('@')) { errEl.textContent = '// INVALID EMAIL ADDRESS'; return; }
+  if (password.length < 6) { errEl.textContent = '// PASSWORD MUST BE AT LEAST 6 CHARACTERS'; return; }
+  if (usernameRaw.length < 3) { errEl.textContent = '// USERNAME TOO SHORT — MINIMUM 3 CHARACTERS'; return; }
+  if (!/^[A-Z0-9_]+$/.test(usernameRaw)) { errEl.textContent = '// INVALID CHARACTERS — LETTERS, NUMBERS, UNDERSCORE ONLY'; return; }
 
   const username = usernameRaw;
 
@@ -1156,10 +1033,7 @@ async function createAccount() {
   try {
     errEl.textContent = '// CHECKING USERNAME...';
     const snap = await firestore.collection('usernames').doc(username.toLowerCase()).get();
-    if (snap.exists) {
-      errEl.textContent = '// USERNAME TAKEN — CHOOSE ANOTHER';
-      return;
-    }
+    if (snap.exists) { errEl.textContent = '// USERNAME TAKEN — CHOOSE ANOTHER'; return; }
 
     errEl.textContent = '// CREATING ACCOUNT...';
     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -1167,9 +1041,7 @@ async function createAccount() {
 
     const batch = firestore.batch();
     batch.set(firestore.collection('users').doc(uid), {
-      username,
-      email,
-      walletAddress: walletAddress || null,
+      username, email, walletAddress: walletAddress || null,
       wins: 0, losses: 0, pvpWins: 0, totalPolWon: 0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1182,15 +1054,10 @@ async function createAccount() {
     showScreen('screen-lobby');
 
   } catch(e) {
-    if (e.code === 'auth/email-already-in-use') {
-      errEl.textContent = '// EMAIL ALREADY REGISTERED — USE LOGIN INSTEAD';
-    } else if (e.code === 'auth/invalid-email') {
-      errEl.textContent = '// INVALID EMAIL FORMAT';
-    } else if (e.code === 'auth/weak-password') {
-      errEl.textContent = '// PASSWORD TOO WEAK — USE AT LEAST 6 CHARACTERS';
-    } else {
-      errEl.textContent = '// ERROR: ' + e.message;
-    }
+    if (e.code === 'auth/email-already-in-use') errEl.textContent = '// EMAIL ALREADY REGISTERED — USE LOGIN INSTEAD';
+    else if (e.code === 'auth/invalid-email') errEl.textContent = '// INVALID EMAIL FORMAT';
+    else if (e.code === 'auth/weak-password') errEl.textContent = '// PASSWORD TOO WEAK — USE AT LEAST 6 CHARACTERS';
+    else errEl.textContent = '// ERROR: ' + e.message;
   }
 }
 
@@ -1200,15 +1067,8 @@ async function loginAccount() {
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
 
-  if (!email || !password) {
-    errEl.textContent = '// ENTER EMAIL AND PASSWORD';
-    return;
-  }
-
-  if (!firebaseReady) {
-    errEl.textContent = '// OFFLINE MODE — CREATE ACCOUNT INSTEAD';
-    return;
-  }
+  if (!email || !password) { errEl.textContent = '// ENTER EMAIL AND PASSWORD'; return; }
+  if (!firebaseReady) { errEl.textContent = '// OFFLINE MODE — CREATE ACCOUNT INSTEAD'; return; }
 
   try {
     errEl.textContent = '// LOGGING IN...';
@@ -1228,17 +1088,11 @@ async function loginAccount() {
     showScreen('screen-lobby');
 
   } catch(e) {
-    if (e.code === 'auth/user-not-found') {
-      errEl.textContent = '// NO ACCOUNT FOUND — CREATE ONE INSTEAD';
-    } else if (e.code === 'auth/wrong-password') {
-      errEl.textContent = '// INCORRECT PASSWORD';
-    } else if (e.code === 'auth/invalid-email') {
-      errEl.textContent = '// INVALID EMAIL FORMAT';
-    } else if (e.code === 'auth/too-many-requests') {
-      errEl.textContent = '// TOO MANY FAILED ATTEMPTS — TRY AGAIN LATER';
-    } else {
-      errEl.textContent = '// ERROR: ' + e.message;
-    }
+    if (e.code === 'auth/user-not-found') errEl.textContent = '// NO ACCOUNT FOUND — CREATE ONE INSTEAD';
+    else if (e.code === 'auth/wrong-password') errEl.textContent = '// INCORRECT PASSWORD';
+    else if (e.code === 'auth/invalid-email') errEl.textContent = '// INVALID EMAIL FORMAT';
+    else if (e.code === 'auth/too-many-requests') errEl.textContent = '// TOO MANY FAILED ATTEMPTS — TRY AGAIN LATER';
+    else errEl.textContent = '// ERROR: ' + e.message;
   }
 }
 
@@ -1254,7 +1108,6 @@ function loadLobby() {
   document.getElementById('profilePol').textContent    = (stats.totalPolWon||0).toFixed(2);
   document.getElementById('profileStreak').textContent = stats.bestStreak   || 0;
   document.getElementById('mmPlayerName').textContent  = currentUser.username;
-  if (walletAddress) updateLobbyWalletUI();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1276,69 +1129,43 @@ async function startQuickMatch() {
     return;
   }
 
-  // Wallet required before queueing
   const myWallet = window.TapStarWallet?.getAddress();
-  if (!myWallet) {
-    showToast('Connect your wallet first');
-    showScreen('screen-lobby');
-    return;
-  }
+  if (!myWallet) { showToast('Connect your wallet first'); showScreen('screen-lobby'); return; }
 
-  // Balance check — must have enough in Hand before entering the queue
   const affordCheck = window.TapStarWallet?.canAffordStake(QUICK_MATCH_STAKE);
-  if (affordCheck && !affordCheck.ok) {
-    showToast(affordCheck.reason);
-    showScreen('screen-lobby');
-    return;
-  }
+  if (affordCheck && !affordCheck.ok) { showToast(affordCheck.reason); showScreen('screen-lobby'); return; }
 
-  // 30s overall pairing timeout
   const timeoutId = setTimeout(() => {
     cancelMatchmaking();
     showToast('No opponents found. Try again or play VS Computer.');
   }, 30000);
 
   try {
-    // Get a fresh ID token to authenticate with the matchmaker Worker
     const idToken = await firebase.auth().currentUser.getIdToken();
-
-    // Ask the Worker to pair us
     const res = await fetch(WORKER_URL + '/pair', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        idToken,
-        username:      currentUser.username,
-        walletAddress: myWallet
-      })
+      body:    JSON.stringify({ idToken, username: currentUser.username, walletAddress: myWallet })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || `pair failed (HTTP ${res.status})`);
+    if (!res.ok) throw new Error(data.error || `pair failed`);
 
     if (data.status === 'paired' || data.status === 'already_paired') {
-      // Worker has already created the room with both wallets stamped.
       clearTimeout(timeoutId);
       opponentName    = data.opponent;
       myPlayerNum     = data.asPlayer;
       stakeAmount     = data.stakeAmount;
       gameMode        = data.gameMode;
       currentRoomCode = data.roomCode;
-      // If this was an already_paired idempotent response, also clear our
-      // player_match entry so we don't loop on the listener case below.
-      if (data.status === 'already_paired') {
-        db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
-      }
+      if (data.status === 'already_paired') db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
       subscribeToRoom(data.roomCode);
       document.getElementById('mmStatus').textContent = '// OPPONENT FOUND: ' + opponentName;
       startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
       return;
     }
 
-    // status === 'queued' — wait for someone else to pair with us. The
-    // Worker will write player_match/${uid} when that happens.
-    if (data.status !== 'queued') {
-      throw new Error('unexpected pair response: ' + JSON.stringify(data));
-    }
+    if (data.status !== 'queued') throw new Error('unexpected response');
+    
     document.getElementById('mmStatus').textContent = '// WAITING FOR OPPONENT...';
     mmListenerRef = db.ref(`player_match/${currentUser.uid}`);
     mmListenerRef.on('value', snap => {
@@ -1347,7 +1174,6 @@ async function startQuickMatch() {
       clearTimeout(timeoutId);
       mmListenerRef.off();
       mmListenerRef = null;
-      // Consume the pairing notification (own-uid delete is allowed by rules)
       db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
       opponentName    = v.opponent;
       myPlayerNum     = v.asPlayer || 1;
@@ -1367,24 +1193,15 @@ async function startQuickMatch() {
 }
 
 async function cancelMatchmaking() {
-  // Stop the listener locally first so a late pairing notification can't
-  // drag us into a match after we've decided to cancel.
-  if (mmListenerRef) {
-    mmListenerRef.off();
-    mmListenerRef = null;
-  }
+  if (mmListenerRef) { mmListenerRef.off(); mmListenerRef = null; }
   if (firebaseReady && currentUser) {
     try {
       const idToken = await firebase.auth().currentUser.getIdToken();
       await fetch(WORKER_URL + '/cancel-queue', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ idToken })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
       });
     } catch (e) {
-      console.warn('[cancel-queue] worker error', e);
-      // Best-effort cleanup of our own player_match entry (rules allow
-      // own-uid delete) so we don't get stuck if the Worker is down
       db.ref(`player_match/${currentUser.uid}`).remove().catch(() => {});
     }
   }
@@ -1401,9 +1218,7 @@ function generateRoomCode() {
   return code;
 }
 
-function setRoomStake(v) {
-  document.getElementById('roomStakeInput').value = v;
-}
+function setRoomStake(v) { document.getElementById('roomStakeInput').value = v; }
 
 async function createPrivateRoom() {
   if (!currentUser) { showToast('Create an account first'); return; }
@@ -1413,7 +1228,6 @@ async function createPrivateRoom() {
   gameMode        = 30;
 
   if (!firebaseReady) {
-    // Demo path: synthesize a code, simulate opponent joining
     const code = generateRoomCode();
     currentRoomCode = code;
     document.getElementById('roomCodeDisplay').textContent = code;
@@ -1430,7 +1244,6 @@ async function createPrivateRoom() {
 
   const myWallet = window.TapStarWallet?.getAddress();
   if (!myWallet) { showToast('Connect your wallet first'); return; }
-
   const affordCheck = window.TapStarWallet?.canAffordStake(stake);
   if (affordCheck && !affordCheck.ok) { showToast(affordCheck.reason); return; }
 
@@ -1439,16 +1252,10 @@ async function createPrivateRoom() {
     const res = await fetch(WORKER_URL + '/create-room', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        idToken,
-        username:      currentUser.username,
-        walletAddress: myWallet,
-        stakeAmount:   stake,
-        gameMode:      30
-      })
+      body:    JSON.stringify({ idToken, username: currentUser.username, walletAddress: myWallet, stakeAmount: stake, gameMode: 30 })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || `create-room failed (HTTP ${res.status})`);
+    if (!res.ok) throw new Error(data.error || `create-room failed`);
 
     currentRoomCode = data.roomCode;
     document.getElementById('roomCodeDisplay').textContent = data.roomCode;
@@ -1467,9 +1274,7 @@ async function joinPrivateRoom() {
   if (code.length !== 6) { showToast('Enter a valid 6-character room code'); return; }
 
   if (!firebaseReady) {
-    currentRoomCode = code;
-    myPlayerNum     = 2;
-    opponentName    = 'HOST';
+    currentRoomCode = code; myPlayerNum = 2; opponentName = 'HOST';
     document.getElementById('room-choice').style.display  = 'none';
     document.getElementById('room-joined').style.display  = 'block';
     document.getElementById('roomJoinedPlayersList').innerHTML =
@@ -1488,14 +1293,8 @@ async function joinPrivateRoom() {
   try {
     const idToken = await firebase.auth().currentUser.getIdToken();
     const res = await fetch(WORKER_URL + '/join-room', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        idToken,
-        username:      currentUser.username,
-        walletAddress: myWallet,
-        roomCode:      code
-      })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, username: currentUser.username, walletAddress: myWallet, roomCode: code })
     });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Could not join room'); return; }
@@ -1513,10 +1312,7 @@ async function joinPrivateRoom() {
        <div class="room-player-row"><span class="room-player-name you">${currentUser.username} (YOU)</span><span class="room-player-status ready">JOINED</span></div>`;
 
     subscribeToRoom(data.roomCode);
-
-  } catch(e) {
-    showToast('Error joining room: ' + e.message);
-  }
+  } catch(e) { showToast('Error joining room: ' + e.message); }
 }
 
 function updateRoomPlayersList(p1name, p2name, stake) {
@@ -1528,9 +1324,7 @@ function updateRoomPlayersList(p1name, p2name, stake) {
     </div>
     <div class="room-player-row">
       <span class="room-player-name opp">${p2name || '???'}</span>
-      <span class="room-player-status ${p2name ? 'ready' : ''}">
-        ${p2name ? 'JOINED' : 'WAITING...'}
-      </span>
+      <span class="room-player-status ${p2name ? 'ready' : ''}">${p2name ? 'JOINED' : 'WAITING...'}</span>
     </div>`;
   document.getElementById('roomWaiting').style.display  = p2name ? 'none' : 'flex';
   document.getElementById('roomStartBtn').style.display = p2name ? 'block' : 'none';
@@ -1542,34 +1336,24 @@ async function startRoomGame() {
     startCountdown(currentUser.username, opponentName, () => startGameScreen(false, true));
     return;
   }
-  // Update room status
   await db.ref(`rooms/${currentRoomCode}`).update({ status: 'countdown' });
 }
 
 async function leaveRoom() {
-  // Clean up listeners FIRST so we don't react to our own deletion
-  if (roomRef) {
-    roomRef.off();
-    roomRef = null;
-  }
-
+  if (roomRef) { roomRef.off(); roomRef = null; }
   const roomCodeAtExit = currentRoomCode;
 
   if (firebaseReady && roomCodeAtExit && currentUser) {
     try {
       const idToken = await firebase.auth().currentUser.getIdToken();
       await fetch(WORKER_URL + '/leave-room', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ idToken, roomCode: roomCodeAtExit })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, roomCode: roomCodeAtExit })
       });
-    } catch (e) {
-      console.warn('[leave-room] worker error', e);
-    }
+    } catch (e) { console.warn('[leave-room] worker error', e); }
     currentRoomCode = null;
   }
 
-  // Reset ALL UI states regardless of network result
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
@@ -1581,60 +1365,38 @@ async function leaveRoom() {
 
 // ═══════════════════════════════════════════════════════════
 //  FIREBASE ROOM MANAGEMENT
-//  (createFirebaseRoom removed — both Quick Match and Private Rooms
-//   now go through the matchmaker Worker which writes rooms via its
-//   service account.)
 // ═══════════════════════════════════════════════════════════
 function applyOpponentGrid(oppGrid, oppTimestamp) {
   const oppNum = myPlayerNum === 1 ? 2 : 1;
-  
-  // Skip stale data
   if (oppTimestamp <= lastSyncTimestamp) return;
   lastSyncTimestamp = oppTimestamp;
   
-  // Process each cell in opponent's view of the grid
   oppGrid.forEach((oppSaysOwner, idx) => {
     if (idx >= cells.length) return;
-    
     const cell = cells[idx];
     const myCurrentOwner = cell.owner;
     const myCaptureTime = cellTimestamps[idx] || 0;
     
-    // Case 1: Opponent says THEY own this cell
     if (oppSaysOwner === oppNum) {
-      // If I captured it MORE recently than this sync, keep my capture
-      if (myCaptureTime > oppTimestamp && myCurrentOwner === myPlayerNum) {
-        return; // Keep my capture
-      }
-      // Otherwise, accept opponent's ownership
+      if (myCaptureTime > oppTimestamp && myCurrentOwner === myPlayerNum) return;
       if (myCurrentOwner !== oppNum) {
         cell.owner = oppNum;
         setCellVisual(cell, oppNum);
       }
-    }
-    // Case 2: Opponent says cell is neutral
-    else if (oppSaysOwner === 0) {
-      // If I own it locally (recent capture), keep it
-      if (myCurrentOwner === myPlayerNum) {
-        return;
-      }
-      // If I had it marked as opponent-owned, clear it
+    } else if (oppSaysOwner === 0) {
+      if (myCurrentOwner === myPlayerNum) return;
       if (myCurrentOwner === oppNum) {
         cell.owner = 0;
         cell.el.className = 'cell neutral';
         cell.el.innerHTML = '';
       }
-    }
-    // Case 3: Opponent says I own it (their view of my captures)
-    else if (oppSaysOwner === myPlayerNum) {
-      // They're confirming I own it. If I don't have it marked, mark it.
+    } else if (oppSaysOwner === myPlayerNum) {
       if (myCurrentOwner !== myPlayerNum) {
         cell.owner = myPlayerNum;
         setCellVisual(cell, myPlayerNum);
       }
     }
   });
-  
   updateScores();
 }
 
@@ -1646,10 +1408,9 @@ function subscribeToRoom(code) {
   roomRef.on('value', snap => {
     if (!snap.exists()) return;
     if (matchEnded) return;            
-  const room = snap.val();
-  if (!room) return;
+    const room = snap.val();
+    if (!room) return;
  
-    // Host: detect when opponent joins
     if (myPlayerNum === 1 && room.p2 && document.getElementById('screen-room').classList.contains('active')) {
       opponentName = room.p2.username;
       stakeAmount  = room.stakeAmount;
@@ -1657,7 +1418,6 @@ function subscribeToRoom(code) {
       updateRoomPlayersList(currentUser.username, opponentName, room.stakeAmount);
     }
  
-    // Countdown triggered by host
     if (room.status === 'countdown' && !gameRunning && !countdownActive) {
       startCountdown(
         myPlayerNum === 1 ? currentUser.username : room.p1.username,
@@ -1666,83 +1426,62 @@ function subscribeToRoom(code) {
       );
     }
  
-    // If room already playing, join immediately
     if (room.status === 'playing' && !gameRunning && !countdownActive) {
       startGameScreen(false, true);
     }
  
-    // ═══ NEW: Sync opponent's grid state ═══
     if (room.status === 'playing' && gameRunning && cells.length > 0) {
       const oppKey = myPlayerNum === 1 ? 'p2' : 'p1';
       const oppData = room[oppKey];
       
-     if (oppData && oppData.grid && Array.isArray(oppData.grid) && oppData.timestamp) {
-          if (!gameStartTime || oppData.timestamp > gameStartTime) {
-            applyOpponentGrid(oppData.grid, oppData.timestamp);
-            
-            opponentScore = oppData.score || 0;
-            document.getElementById('score2').textContent = opponentScore;
-            const tc2 = document.getElementById('tapCount2');
-            if (tc2) tc2.textContent = (oppData.taps || 0) + ' TAPS';
-            document.getElementById('combo2').textContent = `OPP COMBO x${oppData.combo || 1}`;
-            document.getElementById('combo2').classList.toggle('hot', (oppData.combo || 1) >= 3);
-            
-            // Capture opponent's medal emoji for their cell visualizations
-            if (oppData.medal !== undefined) {
-              const oppMedal = getMedalById(oppData.medal);
-              opponentMedalEmoji = oppMedal ? oppMedal.emoji : null;
-              const mb2 = document.getElementById('medalBadge2');
-              if (mb2) mb2.textContent = opponentMedalEmoji || '';
-            }
-            
-            const s1 = cells.filter(c => c.owner === myPlayerNum).length;
-            const s2 = opponentScore;
-            const total = s1 + s2;
-            const pct = total > 0 ? (s1 / total * 100) : 50;
-            document.getElementById('territoryFill').style.width = pct + '%';
+      if (oppData && oppData.grid && Array.isArray(oppData.grid) && oppData.timestamp) {
+        if (!gameStartTime || oppData.timestamp > gameStartTime) {
+          applyOpponentGrid(oppData.grid, oppData.timestamp);
+          
+          opponentScore = oppData.score || 0;
+          document.getElementById('score2').textContent = opponentScore;
+          const tc2 = document.getElementById('tapCount2');
+          if (tc2) tc2.textContent = (oppData.taps || 0) + ' TAPS';
+          document.getElementById('combo2').textContent = `OPP COMBO x${oppData.combo || 1}`;
+          document.getElementById('combo2').classList.toggle('hot', (oppData.combo || 1) >= 3);
+          
+          if (oppData.medal !== undefined) {
+            const oppMedal = getMedalById(oppData.medal);
+            opponentMedalEmoji = oppMedal ? oppMedal.emoji : null;
+            const mb2 = document.getElementById('medalBadge2');
+            if (mb2) mb2.textContent = opponentMedalEmoji || '';
           }
+          
+          const s1 = cells.filter(c => c.owner === myPlayerNum).length;
+          const s2 = opponentScore;
+          const total = s1 + s2;
+          const pct = total > 0 ? (s1 / total * 100) : 50;
+          document.getElementById('territoryFill').style.width = pct + '%';
         }
+      }
     }
  
-    // Game ended by opponent
     if (room.status === 'finished' && gameRunning) {
       forceEndGame(room);
     }
   });
 }
 
-function updateOnlineOpponentDisplay(oppData) {
-  document.getElementById('score2').textContent = oppData.score || 0;
-  // Update territory bar based on relative scores
-  const s1 = parseInt(document.getElementById('score1').textContent) || 0;
-  const s2 = oppData.score || 0;
-  const total = s1 + s2;
-  const pct = total > 0 ? (s1 / total * 100) : 50;
-  document.getElementById('territoryFill').style.width = pct + '%';
-}
-
 function syncMyGrid() {
   if (!firebaseReady || !currentRoomCode || !gameRunning) return;
-  
-  // Build grid state array: [owner, owner, owner, ...]
   const gridState = cells.map(c => c.owner);
   
-  // Since "me" always uses taps1/combo1 (regardless of actual player number),
-  // we send those as my stats
   const myData = {
     grid: gridState,
     score: cells.filter(c => c.owner === myPlayerNum).length,
     taps: taps1,
     combo: combo1,
-    medal: equippedMedalId || null, // Share my medal so opponent can display it on my cells
-    timestamp: sharedNow() // Use shared (server-aligned) clock so both devices' timestamps are comparable
+    medal: equippedMedalId || null,
+    timestamp: sharedNow()
   };
   
   db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}`).update(myData).catch(() => {});
 
-  // Refresh the onDisconnect forfeit report with current scores every ~2s.
-  // If we disconnect, the last-refreshed scores land in our forfeit report,
-  // keeping them within tolerance of the opponent's report.
   if (disconnectFRRef && ++disconnectSyncN % 20 === 0) {
     disconnectFRRef.onDisconnect().set({
       version: 1,
@@ -1758,11 +1497,7 @@ function syncMyGrid() {
 //  COUNTDOWN
 // ═══════════════════════════════════════════════════════════
 function startCountdown(name1, name2, onComplete) {
-  // Clear any existing countdown
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
   
   showScreen('screen-game');
   const overlay = document.getElementById('countdown-overlay');
@@ -1810,12 +1545,10 @@ function selectPCMode(el, time) {
 }
 
 function startVsPC() {
-  // Ensure clean state before starting — critical when coming from another game
   fullResetGameState();
-  
   isVsPC    = true;
   isOnlinePvP = false;
-  myPlayerNum = 1; // Human is always P1 in VS PC mode
+  myPlayerNum = 1; 
   gameMode  = pcGameMode;
   stakeAmount = 0;
   opponentName = 'COMPUTER';
@@ -1827,10 +1560,8 @@ function startVsPC() {
 //  GAME SCREEN SETUP
 // ═══════════════════════════════════════════════════════════
 function startGameScreen(vsPC, onlinePvP) {
-  // ========== BULLETPROOF CLEANUP FROM PREVIOUS GAME ==========
   if (matchEnded) return;
   fullResetGameState();
-  // ========== END CLEANUP ==========
   
   isVsPC      = vsPC;
   isOnlinePvP = onlinePvP;
@@ -1838,7 +1569,6 @@ function startGameScreen(vsPC, onlinePvP) {
   const modeNames = { 15: 'BLITZ', 30: 'DUEL', 60: 'WAR' };
   const myName = currentUser?.username || 'YOU';
  
-  // Safe DOM setter helpers — won't crash if element is missing
   const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
   const setClass = (id, cls, add) => { const el = document.getElementById(id); if (el) el.classList[add ? 'add' : 'remove'](cls); };
   const setStyle = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
@@ -1848,12 +1578,13 @@ function startGameScreen(vsPC, onlinePvP) {
  
   const myMedal = getMedalById(equippedMedalId);
   setText('medalBadge1', myMedal?.emoji || '');
+  
+  const currToggle = document.querySelector('.curr-toggle');
  
   if (vsPC) {
-    // VS PC mode: single full-width button. AI plays via aiInterval.
     const aiMedals = ['🤖','👾','💀','🔴','💥'];
     const aiEmoji = aiMedals[Math.floor(Math.random()*aiMedals.length)];
-    opponentMedalEmoji = aiEmoji; // AI's emoji shows on its captured cells
+    opponentMedalEmoji = aiEmoji;
     setText('medalBadge2', aiEmoji);
     setClass('pcIndicator', 'show', true);
     setClass('onlineStatus', 'show', false);
@@ -1861,12 +1592,12 @@ function startGameScreen(vsPC, onlinePvP) {
     setText('p2label', '🤖 COMPUTER');
     setStyle('tapBtn2', 'display', 'none');
     setClass('tapArea', 'vs-pc', false);
+    
     setText('displayStake', 'FREE');
     setText('displayPot', 'FREE');
+    if (currToggle) currToggle.style.display = 'none';
   } else {
-    // Online PvP mode: single full-width button.
-    // Opponent's medal will be populated from Firebase sync (see applyOpponentGrid).
-    opponentMedalEmoji = null; // Will be set when opponent data arrives
+    opponentMedalEmoji = null;
     setText('medalBadge2', '');
     setClass('pcIndicator', 'show', false);
     setClass('onlineStatus', 'show', true);
@@ -1874,13 +1605,11 @@ function startGameScreen(vsPC, onlinePvP) {
     setText('p2label', opponentName);
     setStyle('tapBtn2', 'display', 'none');
     setClass('tapArea', 'vs-pc', false);
-    setText('displayStake', stakeAmount.toFixed(2));
-    setText('displayPot', (stakeAmount * 2).toFixed(2));
-    // Reset my OWN slot for the new game. Strict RTDB rules forbid writing
-    // to the opponent's slot, so we don't try — the opponent's syncMyGrid
-    // tick (every 400ms) will overwrite their own stale state shortly.
-    // The status transition 'waiting/countdown' -> 'playing' is host-only;
-    // p2 just resets their slot.
+    
+    setText('displayStake', formatCurrency(stakeAmount));
+    setText('displayPot', formatCurrency(stakeAmount * 2));
+    if (currToggle) currToggle.style.display = 'block';
+
     if (firebaseReady && currentRoomCode) {
       const ts = sharedNow();
       const myReset = {
@@ -1894,18 +1623,13 @@ function startGameScreen(vsPC, onlinePvP) {
       if (myPlayerNum === 1) myReset.status = 'playing';
       db.ref(`rooms/${currentRoomCode}`).update(myReset).catch(() => {});
 
-      // ── Auto-forfeit on disconnect ──────────────────────────────────
-      // If I close the tab or lose connection, Firebase will fire these
-      // onDisconnect writes automatically. The opponent's room listener
-      // sees status:'finished' and ends the game instantly.
       const frRef  = db.ref(`rooms/${currentRoomCode}/p${myPlayerNum}/finalReport`);
       const stRef  = db.ref(`rooms/${currentRoomCode}/status`);
       const ftRef  = db.ref(`rooms/${currentRoomCode}/finishedAt`);
 
       frRef.onDisconnect().set({
         version: 1, myScore: 0, oppScore: 0,
-        reportedAt: firebase.database.ServerValue.TIMESTAMP,
-        forfeit: true
+        reportedAt: firebase.database.ServerValue.TIMESTAMP, forfeit: true
       });
       stRef.onDisconnect().set('finished');
       ftRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
@@ -1918,13 +1642,11 @@ function startGameScreen(vsPC, onlinePvP) {
  
   wasLosingMidgame = false;
   initGrid();
- 
-  // 2 RAF frames to allow render before game logic
   requestAnimationFrame(() => requestAnimationFrame(() => startTimer()));
 }
 
 // ═══════════════════════════════════════════════════════════
-//  GRID — Fixed with document fragment to prevent freeze
+//  GRID
 // ═══════════════════════════════════════════════════════════
 function initGrid() {
   const arena = document.getElementById('arena');
@@ -1940,7 +1662,6 @@ function initGrid() {
   opponentScore = 0;
   lastSyncTimestamp = 0;
   
-  // Clear any stale intervals from previous game
   if (syncInterval) clearInterval(syncInterval);
 
   for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
@@ -1965,8 +1686,6 @@ function initGrid() {
 }
 
 function setCellVisual(cellObj, player) {
-  // Always show my territory as cyan (p1 color) and opponent territory as red (p2 color)
-  // regardless of player numbers
   const visualClass = (player === myPlayerNum) ? 'p1' : 'p2';
   cellObj.el.className = `cell ${visualClass}`;
   cellObj.el.innerHTML = '';
@@ -1982,25 +1701,12 @@ function setCellVisual(cellObj, player) {
 // ═══════════════════════════════════════════════════════════
 //  TAP LOGIC
 // ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
-//  TAP LOGIC — Rewritten
-//  
-//  Key principle: The UI slots are fixed:
-//    - tapCount1, combo1, score1 = MY slot (always "YOU")
-//    - tapCount2, combo2, score2 = OPPONENT slot (always "OPPONENT")
-//  
-//  Regardless of whether I'm P1 or P2 in the room, I always see
-//  myself on the left and opponent on the right.
-// ═══════════════════════════════════════════════════════════
-
-// User tapped their OWN button — this is ALWAYS "me"
 function handleMyTap(e) {
   if (e) e.preventDefault();
   if (!gameRunning) return;
   tap(myPlayerNum, e);
 }
 
-// Used only for local 2-player mode (not active in VS PC or Online PvP)
 function handleOpponentTap(e) {
   if (e) e.preventDefault();
   if (!gameRunning) return;
@@ -2012,30 +1718,21 @@ function handleOpponentTap(e) {
 function tap(player, e) {
   if (e) e.preventDefault();
   if (!gameRunning) return;
-  
-  // In online PvP: only I (myPlayerNum) can tap
   if (isOnlinePvP && player !== myPlayerNum) return;
-  
-  // In VS PC: only human (myPlayerNum=1) can tap
   if (isVsPC && player !== myPlayerNum) return;
 
   const now = Date.now();
   const isMe = (player === myPlayerNum);
   
   if (isMe) {
-    // ALWAYS update the "my" UI slot (tapCount1, combo1), regardless of player number
     taps1++;
     document.getElementById('tapCount1').textContent = taps1 + ' TAPS';
-    // Combo is now PURELY VISUAL — does not multiply invasions
     combo1 = (now - lastTap1 < 500) ? Math.min(combo1 + 1, 5) : 1;
     lastTap1 = now;
     document.getElementById('combo1').textContent = `YOU COMBO x${combo1}`;
     document.getElementById('combo1').classList.toggle('hot', combo1 >= 3);
-    
-    // 1 tap = 1 invasion attempt — strict fairness rule
     invadeCell(myPlayerNum);
   } else {
-    // Opponent's tap (only used in local 2-player mode)
     taps2++;
     const tc2 = document.getElementById('tapCount2');
     if (tc2) tc2.textContent = taps2 + ' TAPS';
@@ -2049,22 +1746,15 @@ function tap(player, e) {
 }
 
 function invadeCell(player) {
-  // In online PvP: only process my own cell captures (opponent's come via sync)
-  // In VS PC: AI captures via aiInvade, my captures via player=1 (since myPlayerNum=1 in vsPC)
   if (isOnlinePvP && player !== myPlayerNum) return;
   
   const neutral = cells.filter(c => c.owner === 0);
   const enemy   = cells.filter(c => c.owner !== player && c.owner !== 0);
   
   let target = null;
-  
-  if (neutral.length > 0 && Math.random() < 0.7) {
-    target = neutral[Math.floor(Math.random() * neutral.length)];
-  } else if (enemy.length > 0) {
-    target = enemy[Math.floor(Math.random() * enemy.length)];
-  } else if (neutral.length > 0) {
-    target = neutral[Math.floor(Math.random() * neutral.length)];
-  }
+  if (neutral.length > 0 && Math.random() < 0.7) target = neutral[Math.floor(Math.random() * neutral.length)];
+  else if (enemy.length > 0) target = enemy[Math.floor(Math.random() * enemy.length)];
+  else if (neutral.length > 0) target = neutral[Math.floor(Math.random() * neutral.length)];
   
   if (!target) return;
   
@@ -2073,39 +1763,21 @@ function invadeCell(player) {
   
   target.owner = player;
   
-  // Track timestamp for sync conflict resolution — only for MY captures
-  // Use sharedNow() so both devices' timestamps are in the same coordinate space
-  if (player === myPlayerNum) {
-    cellTimestamps[idx] = sharedNow();
-  }
+  if (player === myPlayerNum) cellTimestamps[idx] = sharedNow();
   
   setCellVisual(target, player);
   
-  // Visual flash: if I captured it, flash as "mine"; otherwise flash as "opponent"
   const flashClass = (player === myPlayerNum) ? 'flash-p1' : 'flash-p2';
   target.el.classList.add(flashClass);
   
-  // Power-up cells just visually clear when captured — no bonus invasions.
-  // Strict "1 tap = 1 cell" rule means power-ups can't grant extra captures.
-  if (isPower) {
-    powerCells.delete(idx);
-  }
+  if (isPower) powerCells.delete(idx);
   
-  setTimeout(() => { 
-    if (target.el) target.el.classList.remove(flashClass); 
-  }, 200);
-  
-  // Update scores immediately so UI reflects capture
+  setTimeout(() => { if (target.el) target.el.classList.remove(flashClass); }, 200);
   updateScores();
   
-  // Sync to Firebase if online PvP and it was my capture
   if (isOnlinePvP && player === myPlayerNum) {
-    // Debounced sync to avoid flooding Firebase
     if (!invadeCell._syncTimer) {
-      invadeCell._syncTimer = setTimeout(() => {
-        syncMyGrid();
-        invadeCell._syncTimer = null;
-      }, 50);
+      invadeCell._syncTimer = setTimeout(() => { syncMyGrid(); invadeCell._syncTimer = null; }, 50);
     }
   }
 }
@@ -2114,43 +1786,22 @@ function aiInvade(stealChance, comboMax) {
   const neutral = cells.filter(c => c.owner === 0);
   const enemy   = cells.filter(c => c.owner === 1);
   let target = null;
-  if (Math.random() < stealChance && enemy.length > 0) {
-    target = enemy[Math.floor(Math.random() * enemy.length)];
-  } else if (neutral.length > 0) {
-    target = neutral[Math.floor(Math.random() * neutral.length)];
-  } else if (enemy.length > 0) {
-    target = enemy[Math.floor(Math.random() * enemy.length)];
-  }
+  if (Math.random() < stealChance && enemy.length > 0) target = enemy[Math.floor(Math.random() * enemy.length)];
+  else if (neutral.length > 0) target = neutral[Math.floor(Math.random() * neutral.length)];
+  else if (enemy.length > 0) target = enemy[Math.floor(Math.random() * enemy.length)];
   if (!target) return;
   const idx = cells.indexOf(target);
   const isPower = powerCells.has(idx);
   target.owner = 2;
   setCellVisual(target, 2);
-  // AI is always opponent, so use flash-p2
   target.el.classList.add('flash-p2');
-  // Power-up cells just visually clear — no bonus invasions for AI either
-  if (isPower) {
-    powerCells.delete(idx);
-  }
+  if (isPower) powerCells.delete(idx);
   setTimeout(() => { if (target.el) target.el.classList.remove('flash-p2'); }, 200);
-}
-
-function spawnPowerUp() {
-  const neutral = cells.filter((c, i) => c.owner === 0 && !powerCells.has(i));
-  if (!neutral.length) return;
-  const t = neutral[Math.floor(Math.random() * neutral.length)];
-  const idx = cells.indexOf(t);
-  powerCells.add(idx);
-  const icon = document.createElement('span');
-  icon.className = 'cell-power-icon';
-  icon.textContent = '⚡';
-  t.el.appendChild(icon);
 }
 
 function updateScores() {
   const s1 = cells.filter(c => c.owner === myPlayerNum).length;
   const s2 = cells.filter(c => c.owner !== myPlayerNum && c.owner !== 0).length;
-  
   document.getElementById('score1').textContent = s1;
   document.getElementById('score2').textContent = s2;
   
@@ -2165,13 +1816,7 @@ function updateScores() {
 //  TIMER
 // ═══════════════════════════════════════════════════════════
 function startTimer() {
-  // Safety: validate gameMode
-  if (!gameMode || gameMode <= 0) {
-    console.error('Invalid gameMode:', gameMode, '— defaulting to 30');
-    gameMode = isVsPC ? (pcGameMode || 30) : 30;
-  }
-  
-  // One more cleanup just to be safe — in case anything leaked through
+  if (!gameMode || gameMode <= 0) { gameMode = isVsPC ? (pcGameMode || 30) : 30; }
   if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
   if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
   if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
@@ -2182,24 +1827,12 @@ function startTimer() {
   gameStartTime = Date.now();
   
   const timerEl = document.getElementById('timer');
-  if (timerEl) {
-    timerEl.textContent = timeLeft;
-    timerEl.classList.remove('urgent');
-  }
-
-  // Power-up spawning is disabled — strict "1 tap = 1 cell" rule means
-  // power-ups can't grant bonus captures, so spawning them would be misleading.
-  // (powerInterval is left unset; fullResetGameState handles cleanup.)
+  if (timerEl) { timerEl.textContent = timeLeft; timerEl.classList.remove('urgent'); }
 
   if (isVsPC) {
     const cfg = AI_CONFIG[difficulty] || AI_CONFIG.easy;
     aiInterval = setInterval(() => {
-      if (!gameRunning) { 
-        if (aiInterval) { clearInterval(aiInterval); aiInterval = null; }
-        return; 
-      }
-      // 1 AI "tap" = 1 invasion — same fairness rule as the player.
-      // Difficulty is set purely by the interval (taps per second).
+      if (!gameRunning) { if (aiInterval) { clearInterval(aiInterval); aiInterval = null; } return; }
       aiInvade(cfg.stealChance, cfg.comboMax);
       taps2++;
       const tc2 = document.getElementById('tapCount2');
@@ -2209,15 +1842,14 @@ function startTimer() {
   }
 
   if (isOnlinePvP) {
-    syncMyGrid(); // Sync immediately on start
-    syncInterval = setInterval(syncMyGrid, 100); // Sync every 100ms
+    syncMyGrid(); 
+    syncInterval = setInterval(syncMyGrid, 100); 
   }
 
-  // Main countdown timer
   timerInterval = setInterval(() => {
     if (!gameRunning || matchEnded) {
-    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    return;
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      return;
     }
     timeLeft--;
     const tEl = document.getElementById('timer');
@@ -2226,7 +1858,6 @@ function startTimer() {
       if (timeLeft <= 10) tEl.classList.add('urgent');
     }
     if (timeLeft <= 0) {
-      // Stop the timer first
       if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
       if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
       if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
@@ -2241,14 +1872,11 @@ function startTimer() {
 //  END GAME
 // ═══════════════════════════════════════════════════════════
 function endGame() {
-  if (matchEnded) return;             // Prevent double-end
+  if (matchEnded) return;
   matchEnded = true;
   gameRunning = false;
   gameStartTime = null;
   
-  // Detach Firebase listener IMMEDIATELY, before any awaits or other work.
-  // Otherwise stale snapshots can re-trigger startGameScreen after the
-  // match has already ended.
   if (roomRef) { roomRef.off(); roomRef = null; }
   
   if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
@@ -2256,24 +1884,18 @@ function endGame() {
   if (syncInterval)    { clearInterval(syncInterval);    syncInterval = null; }
   if (powerInterval)   { clearInterval(powerInterval);   powerInterval = null; }
 
-  // Cancel disconnect auto-forfeit — we're ending normally
   for (const ref of disconnectRefs) {
     try { ref.onDisconnect().cancel(); } catch (e) {}
   }
   disconnectRefs = [];
   disconnectFRRef = null;
 
-  // s1 = MY score (my cells), s2 = OPPONENT score (their cells)
   const s1    = cells.filter(c => c.owner === myPlayerNum).length;
   const oppNum = myPlayerNum === 1 ? 2 : 1;
   const s2    = isOnlinePvP ? opponentScore : cells.filter(c => c.owner === oppNum).length;
   const total = cells.length;
   const pct1  = total > 0 ? s1 / total : 0;
 
-  // Phase 3: trigger on-chain settlement for online PvP matches.
-  // The settle module writes the new finalReport schema (myScore + oppScore)
-  // and orchestrates contract calls. Fire-and-forget — we update the result
-  // screen reactively via onUpdate.
   if (isOnlinePvP && firebaseReady && currentRoomCode && window.TapStarSettle) {
     window.TapStarSettle.handleMatchEnd({
       roomCode:    currentRoomCode,
@@ -2297,7 +1919,6 @@ function endGame() {
   document.getElementById('finalScore2').textContent = s2;
   document.getElementById('finalPct').textContent    = Math.round(Math.max(pct1, s2/total) * 100) + '%';
 
-  // Update stats
   const stats = getStats();
   stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
   stats.totalWins   = stats.totalWins || 0;
@@ -2329,7 +1950,6 @@ function endGame() {
   }
   saveStats(stats);
 
-  // Update Firestore
   if (firebaseReady && currentUser) {
     firestore.collection('users').doc(currentUser.uid).update({
       wins: stats.totalWins,
@@ -2339,30 +1959,24 @@ function endGame() {
     }).catch(() => {});
   }
 
-  // Achievements
   const newlyUnlocked = checkAchievements(stats);
 
-  // Payout
- // Phase 3: Payout — show pending state for online PvP, the settle module
-  // updates this in real time via updateSettlementUI(). VS Computer is unchanged.
   if (isVsPC) {
     document.getElementById('payoutAmount').textContent  = 'FREE PRACTICE';
     document.getElementById('payoutAmount').style.fontSize = '1.2rem';
     document.getElementById('payoutLabel').textContent  = difficulty.toUpperCase() + ' DIFFICULTY';
     document.getElementById('blockchainNote').textContent = 'No ETH at stake. Switch to PvP to win real ETH!';
   } else if (isOnlinePvP) {
-    // Initial state — settle module overrides this as it progresses
     document.getElementById('payoutAmount').textContent    = '⏳ SETTLING...';
     document.getElementById('payoutAmount').style.fontSize = '1.5rem';
     document.getElementById('payoutLabel').textContent     = 'WAITING FOR ON-CHAIN CONFIRMATION';
     document.getElementById('blockchainNote').textContent  = 'Match result is being signed and settled on-chain. This usually takes 10–30 seconds.';
   } else {
-    // Local 2P or other non-online mode — keep simple
     document.getElementById('payoutAmount').textContent    = winnerNum === 1 ? 'YOU WIN' : winnerNum === 2 ? 'YOU LOSE' : 'DRAW';
     document.getElementById('payoutLabel').textContent     = 'LOCAL MATCH';
     document.getElementById('blockchainNote').textContent  = 'Local matches do not affect your on-chain Hand balance.';
   }
-  // Unlocked medals
+
   const ub = document.getElementById('unlockBox');
   const um = document.getElementById('unlockMedals');
   if (newlyUnlocked.length > 0) {
@@ -2374,19 +1988,11 @@ function endGame() {
     ub.style.display = 'none';
   }
 
-  // Leaderboard
-  if (winnerNum !== null) {
-    saveLbResult(currentUser?.username || 'ANON', polWon, isVsPC, difficulty);
-  }
-
-  // Clean up room listener
-
+  if (winnerNum !== null) saveLbResult(currentUser?.username || 'ANON', polWon, isVsPC, difficulty);
+  
   document.getElementById('result-overlay').classList.add('show');
 }
-// ═══════════════════════════════════════════════════════════════
-//   PHASE 3 · Settlement UI updater
-//   Called by tapstar-settle.js as the settlement progresses
-// ═══════════════════════════════════════════════════════════════
+
 function updateSettlementUI(status, data) {
   const amt   = document.getElementById('payoutAmount');
   const label = document.getElementById('payoutLabel');
@@ -2425,9 +2031,7 @@ function updateSettlementUI(status, data) {
       amt.textContent = `+${payout.toFixed(4)} ETH`;
       amt.style.fontSize = '2rem';
       label.textContent = 'WINNER PAYOUT · CONFIRMED';
-      const link = data?.txHash
-        ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>`
-        : '';
+      const link = data?.txHash ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>` : '';
       note.innerHTML = 'Your Hand has been credited.' + link;
       break;
     }
@@ -2435,9 +2039,7 @@ function updateSettlementUI(status, data) {
       amt.textContent = '↺ REFUNDED';
       amt.style.fontSize = '1.5rem';
       label.textContent = data?.reason ? 'REFUND · ' + String(data.reason).toUpperCase() : 'REFUND';
-      const link = data?.txHash
-        ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>`
-        : '';
+      const link = data?.txHash ? ` <a href="${window.TapStarWallet.explorerTx(data.txHash)}" target="_blank" rel="noopener" style="color:#00ffcc;">view tx ↗</a>` : '';
       note.innerHTML = 'Both stakes were unlocked. No fee was taken.' + link;
       break;
     }
@@ -2451,7 +2053,6 @@ function updateSettlementUI(status, data) {
 }
 
 function forceEndGame(room) {
-  // Called when room status changes to 'finished' from Firebase
   if (!gameRunning) return;
   if (timerInterval)   { clearInterval(timerInterval);   timerInterval = null; }
   if (aiInterval)      { clearInterval(aiInterval);      aiInterval = null; }
@@ -2476,8 +2077,6 @@ function checkAchievements(stats) {
 // ═══════════════════════════════════════════════════════════
 function rematch() {
   document.getElementById('result-overlay').classList.remove('show');
-  
-  // Belt-and-suspenders: ensure clean state before starting new game
   fullResetGameState();
   
   if (isVsPC) {
@@ -2492,29 +2091,22 @@ function rematch() {
 
 function backToLobby() {
   document.getElementById('result-overlay').classList.remove('show');
-  
-  // Full state reset using the bulletproof function
   fullResetGameState();
-  
-  // Clean up Firebase listener
   if (roomRef) { roomRef.off(); roomRef = null; }
   
-  // Reset mode flags
   isVsPC = false;
   isOnlinePvP = false;
   currentRoomCode = null;
-  myPlayerNum = 1; // Reset to default
+  myPlayerNum = 1;
   opponentName = '—';
   
-  // Reset button UI for next game — but DO NOT replace innerHTML
-  // (that would destroy the medalBadge2 child element and break the next game)
   const tb2 = document.getElementById('tapBtn2');
   if (tb2) {
     tb2.disabled = false;
     tb2.style.opacity = '1';
-    tb2.style.display = 'block';
+    tb2.style.display = 'none'; // Re-hide the opponent button reliably
   }
-  // Reset just the tap-count text, leaving other children intact
+  
   const tc2 = document.getElementById('tapCount2');
   if (tc2) tc2.textContent = '0 TAPS';
   const mb2 = document.getElementById('medalBadge2');
@@ -2526,7 +2118,6 @@ function backToLobby() {
   document.getElementById('pcIndicator').classList.remove('show');
   document.getElementById('onlineStatus').classList.remove('show');
   
-  // Reset room screen UI
   document.getElementById('room-choice').style.display  = 'block';
   document.getElementById('room-hosting').style.display = 'none';
   document.getElementById('room-joined').style.display  = 'none';
@@ -2556,7 +2147,7 @@ function updateEquippedBanner() {
   const m = getMedalById(equippedMedalId);
   document.getElementById('equippedPreview').textContent = m ? m.emoji : '—';
   document.getElementById('equippedName').textContent    = m ? m.name : 'NO MEDAL EQUIPPED';
-  document.getElementById('equippedSub').textContent     = m ? `${m.type==='premium'?m.price+' POL':'Achievement'} • Equipped` : 'Select a medal below to display it in your cells';
+  document.getElementById('equippedSub').textContent     = m ? `${m.type==='premium'?m.price+' ETH':'Achievement'} • Equipped` : 'Select a medal below to display it in your cells';
 }
 function buyMedal(id) {
   if (!walletAddress) { showToast('Connect your wallet first!'); return; }
@@ -2592,12 +2183,12 @@ function renderStoreContent(tab) {
     else if (isOwned) badge = `<span class="medal-badge owned">OWNED</span>`;
     else if (isLocked) badge = `<span class="medal-badge locked-badge">LOCKED</span>`;
     let priceHtml = m.type === 'premium'
-      ? `<div class="medal-price">${isOwned ? 'OWNED' : m.price + ' POL'}</div>`
+      ? `<div class="medal-price">${isOwned ? 'OWNED' : m.price + ' ETH'}</div>`
       : `<div class="medal-price free">${isOwned ? 'UNLOCKED' : 'FREE'}</div>`;
     let actionHtml = '';
     if (isEquipped)  actionHtml = `<button class="medal-btn equipped-btn" onclick="unequipMedal()">✓ EQUIPPED</button>`;
     else if (isOwned) actionHtml = `<button class="medal-btn equip" onclick="equipMedal('${m.id}')">EQUIP</button>`;
-    else if (m.type === 'premium') actionHtml = `<button class="medal-btn buy" onclick="buyMedal('${m.id}')">BUY ${m.price} POL</button>`;
+    else if (m.type === 'premium') actionHtml = `<button class="medal-btn buy" onclick="buyMedal('${m.id}')">BUY ${m.price} ETH</button>`;
     else {
       const pct = Math.round((prog / m.target) * 100);
       actionHtml = `<div class="medal-progress">${prog}/${m.target} (${pct}%)</div><div class="medal-progress-bar"><div class="medal-progress-fill" style="width:${pct}%"></div></div>`;
@@ -2648,7 +2239,7 @@ function renderLeaderboard(period) {
   const myName = currentUser?.username || '';
   if (!rows.length) { el.innerHTML = `<div class="lb-empty">// NO DATA YET<br>PLAY GAMES TO APPEAR HERE</div>`; return; }
   const medals = ['🥇','🥈','🥉'], cls = ['gold','silver','bronze'];
-  let h = `<table class="lb-table"><thead><tr><th>#</th><th>PLAYER</th><th>WINS</th><th>PVP</th><th>VS AI</th><th>POL WON</th></tr></thead><tbody>`;
+  let h = `<table class="lb-table"><thead><tr><th>#</th><th>PLAYER</th><th>WINS</th><th>PVP</th><th>VS AI</th><th>ETH WON</th></tr></thead><tbody>`;
   rows.forEach((r,i) => {
     const me = r.name === myName;
     h += `<tr ${me ? 'style="background:rgba(0,255,204,.06)"' : ''}>
@@ -2689,12 +2280,10 @@ function showToast(msg) {
 // ═══════════════════════════════════════════════════════════
 initApp();
 
-// Starter achievement check
 setTimeout(() => {
   if (!getOwnedMedals().length) checkAchievements(getStats());
 }, 500);
 </script>
-<!-- Phase 2: WalletConnect + on-chain integration -->
 <script type="module" src="tapstar-wallet.js"></script>
 <script src="tapstar-wallet-ui.js"></script>
 <script src="tapstar-settle.js"></script>

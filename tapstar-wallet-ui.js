@@ -7,24 +7,21 @@
 (function () {
   'use strict';
 
-  // Wait until both DOM and wallet module are ready.
   function whenReady(fn) {
-    const tick = () => {
+    const term = () => {
       if (document.readyState !== 'loading' && window.TapStarWallet) fn();
-      else setTimeout(tick, 50);
+      else setTimeout(term, 50);
     };
-    tick();
+    term();
   }
 
   whenReady(() => {
     const W = window.TapStarWallet;
 
-    // ─── ELEMENT BUILDERS ─────────────────────────────────────────
     function buildWalletCard() {
       const host = document.querySelector('.wallet-row');
       if (!host) return null;
 
-      // Replace old .wallet-row with new card
       const card = document.createElement('div');
       card.className = 'ts-wallet-card disconnected';
       card.id = 'tsWalletCard';
@@ -95,16 +92,14 @@
     }
 
     function buildNetworkWarn() {
-      // Replace the old .network-warn with our themed one
       const old = document.getElementById('networkWarn');
       if (old) {
         old.className = 'ts-net-warn';
         old.id = 'tsNetWarn';
-        old.textContent = '⚠ WRONG NETWORK — SWITCH IN YOUR WALLET';
+        old.textContent = '⚠ WRONG NETWORK — SWITCH TO BASE IN YOUR WALLET';
       }
     }
 
-    // ─── DOM RENDERERS ────────────────────────────────────────────
     function fmt(eth, decimals = 4) {
       if (eth === 0 || !isFinite(eth)) return '0.0000';
       if (eth < 0.0001) return eth.toExponential(2);
@@ -150,12 +145,11 @@
       document.getElementById('tsBtnWithdraw').onclick   = () => openWithdrawModal();
       document.getElementById('tsBtnDisconnect').onclick = () => W.disconnect();
 
-      // Header pill
       const headerBtn = document.getElementById('lobbyWalletBtn');
       if (headerBtn) {
         headerBtn.classList.add('connected', 'ts-addr');
         headerBtn.textContent = '[ ' + s.addressShort + ' ]';
-        headerBtn.onclick = () => openWithdrawModal(); // tap header to manage funds
+        headerBtn.onclick = () => openWithdrawModal();
       }
     }
 
@@ -167,7 +161,6 @@
     }
 
     function renderStakeHint(s) {
-      // Add or update the hint under the QUICK MATCH button
       const quickBtn = document.querySelector('.mode-btn.pvp');
       if (!quickBtn) return;
 
@@ -179,10 +172,7 @@
         quickBtn.insertAdjacentElement('afterend', hint);
       }
 
-      // Read configured QUICK_MATCH_STAKE from window if game.js exposes it,
-      // else fall back to our default of 0.001 ETH.
-      const stake = (typeof window.QUICK_MATCH_STAKE !== 'undefined')
-        ? window.QUICK_MATCH_STAKE : 0.001;
+      const stake = (typeof window.QUICK_MATCH_STAKE !== 'undefined') ? window.QUICK_MATCH_STAKE : 0.001;
 
       if (!s.connected) {
         hint.textContent = `// CONNECT WALLET TO PLAY · ${stake} ${s.currency} ENTRY`;
@@ -198,18 +188,15 @@
         }
       }
 
-      // Also update the button's subtitle to reflect real currency
       const sub = quickBtn.querySelector('.mode-btn-sub');
       if (sub) sub.textContent = `RANDOM OPPONENT · ${stake} ${s.currency} STAKE`;
     }
 
-    // ─── MODAL HANDLERS ───────────────────────────────────────────
     function openModal(id) { document.getElementById(id)?.classList.add('show'); }
     function closeModal(id) {
       const m = document.getElementById(id);
       if (m) m.classList.remove('show');
       if (id === 'tsModalWithdraw') stopCooldownTimer();
-      // clear inputs
       m?.querySelectorAll('input').forEach(i => i.value = '');
       m?.querySelectorAll('.ts-modal-error').forEach(e => e.textContent = '');
       m?.querySelectorAll('.ts-preset.active').forEach(p => p.classList.remove('active'));
@@ -224,7 +211,6 @@
     }
 
     let cooldownInterval = null;
-
     function stopCooldownTimer() {
       if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
     }
@@ -263,7 +249,6 @@
       document.getElementById('tsWdrHand').textContent   = fmt(s.handEth)   + ' ' + s.currency;
       openModal('tsModalWithdraw');
 
-      // Check V4 cooldown
       stopCooldownTimer();
       let remaining = await W.getCooldownRemaining();
       setCooldownUI(remaining);
@@ -278,7 +263,6 @@
     }
 
     function wireModalActions() {
-      // Preset chips
       document.querySelectorAll('#tsDepPresets .ts-preset').forEach(btn => {
         btn.onclick = () => {
           document.querySelectorAll('#tsDepPresets .ts-preset').forEach(b => b.classList.remove('active'));
@@ -298,11 +282,8 @@
         try {
           await W.deposit(amt);
           closeModal('tsModalDeposit');
-        } catch (e) {
-          errEl.textContent = friendlyError(e);
-        } finally {
-          document.getElementById('tsDepGo').disabled = false;
-        }
+        } catch (e) { errEl.textContent = friendlyError(e); }
+        finally { document.getElementById('tsDepGo').disabled = false; }
       };
 
       document.getElementById('tsWdrGo').onclick = async () => {
@@ -316,11 +297,8 @@
         try {
           await W.withdraw(amt);
           closeModal('tsModalWithdraw');
-        } catch (e) {
-          errEl.textContent = friendlyError(e);
-        } finally {
-          document.getElementById('tsWdrGo').disabled = false;
-        }
+        } catch (e) { errEl.textContent = friendlyError(e); }
+        finally { document.getElementById('tsWdrGo').disabled = false; }
       };
 
       document.getElementById('tsWdrAllGo').onclick = async () => {
@@ -332,29 +310,22 @@
         try {
           await W.withdrawAll();
           closeModal('tsModalWithdraw');
-        } catch (e) {
-          errEl.textContent = friendlyError(e);
-        } finally {
-          document.getElementById('tsWdrAllGo').disabled = false;
-        }
+        } catch (e) { errEl.textContent = friendlyError(e); }
+        finally { document.getElementById('tsWdrAllGo').disabled = false; }
       };
 
-      // Click-outside-to-close
       ['tsModalDeposit', 'tsModalWithdraw'].forEach(id => {
         const m = document.getElementById(id);
         m?.addEventListener('click', e => { if (e.target === m) closeModal(id); });
       });
     }
 
-    // ─── TX TOAST ─────────────────────────────────────────────────
     let toastTimer = null;
     function showToast(msg, kind = '', hash = null) {
       const t = document.getElementById('tsTxToast');
       if (!t) return;
       let html = msg;
-      if (hash) {
-        html += ` <a href="${W.explorerTx(hash)}" target="_blank" rel="noopener">view ↗</a>`;
-      }
+      if (hash) html += ` <a href="${W.explorerTx(hash)}" target="_blank" rel="noopener">view ↗</a>`;
       t.innerHTML = html;
       t.className = 'ts-tx-toast show ' + kind;
       clearTimeout(toastTimer);
@@ -370,32 +341,25 @@
       return msg.slice(0, 90);
     }
 
-    // ─── EVENT WIRING ─────────────────────────────────────────────
     function attachLobbyConnectButtons() {
-      // Replace global connect functions so existing onclick="connectWalletLobby()"
-      // and onclick="connectWalletAuth()" calls trigger AppKit instead of MetaMask.
       window.connectWalletLobby = () => W.connect();
       window.connectWalletAuth  = () => W.connect();
     }
 
-    // Subscribe to wallet state changes
     W.onChange((event, s) => {
       renderWalletCard(s);
       renderNetworkWarn(s);
       renderStakeHint(s);
 
-      // Sync to legacy globals so existing game code keeps working
       window.walletAddress = s.address;
-      window.walletBalance = s.handEth; // game logic uses Hand balance for stake checks
+      window.walletBalance = s.handEth;
 
-      // Notify auth screen if visible
       const authStatus = document.getElementById('authWalletStatus');
       if (authStatus && s.connected) {
         authStatus.textContent = '✓ WALLET LINKED: ' + s.addressShort;
         authStatus.classList.add('connected');
       }
 
-      // Toasts for tx events
       if (event === 'txSent')      showToast(`⏳ ${s.currency.toUpperCase()} TX SENT…`, '', arguments[0]?.hash);
       if (event === 'txConfirmed') {
         const a = arguments[0];
@@ -408,11 +372,6 @@
       if (event === 'disconnected') showToast(`WALLET DISCONNECTED`);
     });
 
-    // Listen for the AppKit modal-spawned tx events that come BEFORE
-    // the subscriber gets the typed `event`. We need the raw arg.
-    const origEmit = W.onChange;
-
-    // ─── BOOT ─────────────────────────────────────────────────────
     buildWalletCard();
     buildModals();
     buildNetworkWarn();
@@ -421,7 +380,6 @@
     renderWalletCard(W.getState());
     renderStakeHint(W.getState());
 
-    // Expose tiny helper API so legacy game code can ask "can the user afford this stake?"
     window.TapStarUI = {
       openDepositModal,
       openWithdrawModal,

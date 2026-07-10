@@ -237,8 +237,6 @@
 
   // ─── HELPERS ──────────────────────────────────────────────────
   function estimateWinnerPayout(stakeWei, ctx) {
-    // pot = stake * 2; winner gets pot * (1 - houseFee)
-    // Use the wallet's known fee bps if available
     const stakeEth = parseFloat(stakeWei) / 1e18;
     const W = window.TapStarWallet?.getState();
     const feeBps = W?.houseFeeBps ?? 1000;
