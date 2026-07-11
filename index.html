@@ -200,6 +200,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .countdown-vs{font-family:'Orbitron',monospace;font-size:.9rem;letter-spacing:4px;color:#4a6a8a;}
 .countdown-names{display:flex;gap:30px;align-items:center;font-family:'Orbitron',monospace;font-size:.8rem;letter-spacing:2px;}
 
+/* ── SHARED MODAL/OVERLAY STYLES (Store, LB, Terms, Tutorial) ── */
+.screen-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.97);z-index:300;flex-direction:column;padding:20px;overflow-y:auto;}
+.screen-overlay.show{display:flex;}
+.overlay-inner{max-width:860px;width:100%;margin:0 auto;}
+.overlay-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.overlay-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;letter-spacing:4px;color:var(--gold);}
+.overlay-close{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 16px;font-family:'Share Tech Mono',monospace;font-size:.75rem;cursor:pointer;letter-spacing:2px;}
+.overlay-close:hover{border-color:var(--p2);color:var(--p2);}
+
 /* ── RESULT OVERLAY ── */
 #result-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.94);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:18px;text-align:center;padding:20px;overflow-y:auto;}
 #result-overlay.show{display:flex;}
@@ -228,13 +237,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .result-btn:hover{opacity:.8;}
 
 /* ── LEADERBOARD OVERLAY ── */
-#lb-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.97);z-index:200;flex-direction:column;padding:24px 20px;overflow-y:auto;}
-#lb-overlay.show{display:flex;}
-.lb-inner{max-width:700px;width:100%;margin:0 auto;}
-.lb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-.lb-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;letter-spacing:4px;color:var(--gold);}
-.lb-close{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 16px;font-family:'Share Tech Mono',monospace;font-size:.75rem;cursor:pointer;letter-spacing:2px;}
-.lb-close:hover{border-color:var(--p2);color:var(--p2);}
 .lb-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
 .lb-tab{flex:1;padding:10px;background:transparent;border:none;border-bottom:2px solid transparent;color:#4a6a8a;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-bottom:-1px;}
 .lb-tab:hover{color:var(--text);}
@@ -253,12 +255,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .lb-empty{text-align:center;padding:40px;color:#4a6a8a;font-size:.75rem;letter-spacing:2px;line-height:2;}
 
 /* ── MEDAL STORE ── */
-#store-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,.97);z-index:300;flex-direction:column;padding:20px;overflow-y:auto;}
-#store-overlay.show{display:flex;}
-.store-inner{max-width:860px;width:100%;margin:0 auto;}
-.store-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-.store-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;letter-spacing:4px;color:var(--gold);}
-.store-subtitle{font-size:.65rem;color:#4a6a8a;letter-spacing:2px;margin-bottom:20px;}
+.store-subtitle{font-size:.65rem;color:#4a6a8a;letter-spacing:2px;margin-bottom:20px;margin-top:-10px;}
 .equipped-banner{background:rgba(0,255,204,.05);border:1px solid var(--p1);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
 .equipped-preview{font-size:2rem;}
 .equipped-info{flex:1;}
@@ -296,6 +293,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .medal-progress{margin-top:6px;font-size:.58rem;color:#4a6a8a;letter-spacing:1px;}
 .medal-progress-bar{height:3px;background:var(--dim);margin-top:4px;border-radius:2px;overflow:hidden;}
 .medal-progress-fill{height:100%;background:var(--p1);transition:width .3s;}
+
+/* ── TERMS & TUTORIAL TYPOGRAPHY ── */
+.terms-content { font-size: .75rem; color: #a0b0c0; line-height: 1.8; letter-spacing: 1px; padding: 10px 0 30px; }
+.terms-content p { margin-bottom: 16px; }
+.terms-content h3 { font-family: 'Orbitron', monospace; color: var(--gold); font-size: .85rem; letter-spacing: 2px; margin: 24px 0 10px; text-transform: uppercase; }
+.terms-content ul { padding-left: 20px; margin-bottom: 16px; }
+.terms-content li { margin-bottom: 8px; }
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--p1);color:var(--p1);padding:12px 24px;font-family:'Share Tech Mono',monospace;font-size:.8rem;letter-spacing:2px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:320px;}
@@ -359,42 +363,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="shooting-star"></div>
 </div>
 
-<div id="ts-beta-banner" style="
-  position:fixed;top:0;left:0;right:0;
-  background:#1a0a1a;
-  border-bottom:1px solid #ff3366;
-  color:#ffb3c8;
-  font-family:'Share Tech Mono',monospace;
-  font-size:.72rem;letter-spacing:1.5px;
-  padding:10px 16px;
-  display:flex;align-items:center;justify-content:center;gap:14px;
-  z-index:99999;
-  text-align:center;
-  line-height:1.5;
-">
-  <span style="color:#ff3366;font-weight:bold;">⚠ BETA</span>
-  <span>
-    TAPSTAR is in active development · running on
-    <span style="color:#ffd700;">BASE MAINNET</span>
-  </span>
-  <button onclick="document.getElementById('ts-beta-banner').style.display='none'" style="
-    background:transparent;
-    border:1px solid #ff3366;
-    color:#ff3366;
-    font-family:inherit;font-size:.6rem;letter-spacing:2px;
-    padding:4px 10px;cursor:pointer;
-    transition:all .15s;
-    margin-left:auto;
-  " onmouseover="this.style.background='rgba(255,51,102,.15)'" onmouseout="this.style.background='transparent'">DISMISS</button>
-</div>
-<style>
-  body { padding-top: 44px !important; }
-  @media (max-width: 600px) {
-    #ts-beta-banner { font-size: .62rem; padding: 8px 10px; gap: 8px; }
-    #ts-beta-banner span:nth-of-type(2) { line-height: 1.4; }
-    body { padding-top: 64px !important; }
-  }
-</style>
 <!-- ═══════════════════ AUTH SCREEN ═══════════════════ -->
 <div id="screen-auth" class="screen active">
   <div class="auth-wrap">
@@ -427,12 +395,69 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
+<!-- ═══════════════════ TERMS & CONDITIONS OVERLAY ═══════════════════ -->
+<div id="terms-overlay" class="screen-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">⚖️ TERMS & CONDITIONS</div>
+      <button class="overlay-close" onclick="closeTerms()">[ CANCEL ]</button>
+    </div>
+    <div class="panel terms-content">
+      <h3>1. Acknowledgment of Risk</h3>
+      <p>TapStar is a decentralized, skill-based Web3 application operating on the Base blockchain. By depositing funds into the smart contract ("Hand") and participating in matches, you acknowledge that you are interacting with experimental technology. You accept full responsibility for any financial risks associated with playing.</p>
+      
+      <h3>2. Real Money Play</h3>
+      <p>The stakes placed in PvP matches represent real cryptocurrency (ETH). Once a match is initiated, your stake is locked. The winner receives the pot minus a 10% protocol fee. In the event of a disconnect or network failure during a match, your stake may be forfeited to the opponent. Ensure you have a stable internet connection before playing.</p>
+
+      <h3>3. Age & Jurisdiction</h3>
+      <p>By creating an account, you confirm that you are of legal age to participate in real-money skill-based gaming in your jurisdiction, and that accessing this application does not violate your local laws.</p>
+
+      <h3>4. No Liability</h3>
+      <p>The creators and operators of TapStar are not liable for any losses incurred due to smart contract bugs, exploit attacks, frontend errors, blockchain network congestion, or user error.</p>
+    </div>
+    <button class="auth-btn" style="margin-top: 20px; font-size: 1rem; padding: 20px;" onclick="acceptTermsAndCreateAccount()">I AGREE & CREATE ACCOUNT</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ TUTORIAL OVERLAY ═══════════════════ -->
+<div id="tutorial-overlay" class="screen-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">📖 HOW TO PLAY</div>
+      <button class="overlay-close" onclick="closeTutorial()">[ CLOSE ]</button>
+    </div>
+    <div class="panel terms-content">
+      <h3>1. Fund Your Hand</h3>
+      <p>TapStar uses the Base blockchain. Connect your MetaMask or Web3 wallet. Click <strong>+ DEPOSIT</strong> to move ETH from your Wallet into your in-game <strong>Hand</strong>. Your Hand balance is what you use to enter matches.</p>
+      
+      <h3>2. The Rules of Combat</h3>
+      <p>Both players face off on a 12x12 grid for 30 seconds.</p>
+      <ul>
+        <li><strong>Tap Faster:</strong> Tap your button as fast as you can. 1 Tap = 1 Cell claimed.</li>
+        <li><strong>Steal Territory:</strong> You will overwrite neutral cells first, then begin stealing your opponent's cells.</li>
+        <li><strong>Win the Pot:</strong> The player with the most cells when the timer hits zero wins the entire pot (minus a 10% network fee).</li>
+      </ul>
+
+      <h3>3. Game Modes</h3>
+      <ul>
+        <li><strong>Quick Match:</strong> Random matchmaking with a fixed 0.001 ETH stake.</li>
+        <li><strong>Private Room:</strong> Generate a 6-letter code to invite a friend with a custom stake amount.</li>
+        <li><strong>VS Computer:</strong> Free practice mode against AI. No wallet required.</li>
+      </ul>
+
+      <h3>4. Withdrawals & Cooldowns</h3>
+      <p>You can withdraw your ETH back to your wallet at any time. However, to prevent sore losers from front-running the blockchain settlement, there is a strict <strong>5-Minute Cooldown</strong> placed on your funds after any match or deposit. You must wait 5 minutes before withdrawing.</p>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════ LOBBY SCREEN ═══════════════════ -->
 <div id="screen-lobby" class="screen">
   <div class="lobby-header">
     <div class="logo">TAP<span>★</span>STAR</div>
     <div class="header-btns">
       <button class="hbtn curr-toggle" onclick="toggleCurrency()">[ ⇄ SHOW USD ]</button>
+      <button class="hbtn" onclick="openTutorial()">📖 HOW TO PLAY</button>
       <button class="hbtn gold" onclick="openStore()">🏅 MEDALS</button>
       <button class="hbtn gold" onclick="openLeaderboard()">🏆 BOARD</button>
       <button class="hbtn" id="lobbyWalletBtn" onclick="connectWalletLobby()">[ CONNECT WALLET ]</button>
@@ -484,7 +509,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="mm-spinner"></div>
     <div class="mm-player-card">
       <div class="mm-player-name" id="mmPlayerName">—</div>
-      <div class="mm-stake">STAKE: 0.001 ETH</div>
+      <div class="mm-stake" id="mmStakeDisplay">STAKE: 0.001 ETH</div>
     </div>
     <div class="mm-sub" id="mmStatus">// SCANNING FOR AVAILABLE PLAYERS...</div>
     <button class="cancel-btn" onclick="cancelMatchmaking()">[ CANCEL ]</button>
@@ -507,16 +532,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <div class="section-title">// STAKE AMOUNT</div>
         <div class="stake-row">
           <div class="stake-input-wrap">
-            <input type="number" id="roomStakeInput" value="0.001" min="0.001" step="0.001">
+            <input type="number" id="roomStakeInput" value="0.001" min="0.001" step="0.001" oninput="updatePrivateRoomUsdHint()">
             <div class="stake-unit">ETH</div>
           </div>
           <div class="preset-btns">
-            <button class="preset-btn" onclick="setRoomStake(0.001)">0.001</button>
-            <button class="preset-btn" onclick="setRoomStake(0.005)">0.005</button>
-            <button class="preset-btn" onclick="setRoomStake(0.01)">0.01</button>
-            <button class="preset-btn" onclick="setRoomStake(0.05)">0.05</button>
+            <button class="preset-btn" onclick="setRoomStake(0.001)" data-amt="0.001">0.001</button>
+            <button class="preset-btn" onclick="setRoomStake(0.005)" data-amt="0.005">0.005</button>
+            <button class="preset-btn" onclick="setRoomStake(0.01)" data-amt="0.01">0.010</button>
+            <button class="preset-btn" onclick="setRoomStake(0.05)" data-amt="0.05">0.050</button>
           </div>
         </div>
+        <div style="font-size:.65rem; color:var(--gold); letter-spacing:1px; margin-bottom:12px;" id="roomStakeUsdHint">≈ $3.00</div>
         <button class="room-btn" onclick="createPrivateRoom()">CREATE ROOM</button>
       </div>
       <div class="room-or">── OR ──</div>
@@ -661,17 +687,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
   <div class="blockchain-note" id="blockchainNote"></div>
   <div class="result-btns">
-    <button class="result-btn primary" onclick="rematch()">REMATCH</button>
+    <button class="result-btn primary" id="btnRematch" onclick="rematch()">REMATCH</button>
     <button class="result-btn secondary" onclick="backToLobby()">LOBBY</button>
   </div>
 </div>
 
 <!-- ═══════════════════ LEADERBOARD OVERLAY ═══════════════════ -->
-<div id="lb-overlay">
-  <div class="lb-inner">
-    <div class="lb-header">
-      <div class="lb-title">🏆 LEADERBOARD</div>
-      <button class="lb-close" onclick="closeLeaderboard()">[ CLOSE ]</button>
+<div id="lb-overlay" class="screen-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">🏆 LEADERBOARD</div>
+      <button class="overlay-close" onclick="closeLeaderboard()">[ CLOSE ]</button>
     </div>
     <div class="lb-tabs">
       <button class="lb-tab active" onclick="showLbPeriod('daily',this)">DAILY</button>
@@ -683,11 +709,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </div>
 
 <!-- ═══════════════════ MEDAL STORE OVERLAY ═══════════════════ -->
-<div id="store-overlay">
-  <div class="store-inner">
-    <div class="store-header">
-      <div class="store-title">🏅 MEDAL STORE</div>
-      <button class="lb-close" onclick="closeStore()">[ CLOSE ]</button>
+<div id="store-overlay" class="screen-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-header">
+      <div class="overlay-title">🏅 MEDAL STORE</div>
+      <button class="overlay-close" onclick="closeStore()">[ CLOSE ]</button>
     </div>
     <div class="store-subtitle">// MEDALS APPEAR INSIDE YOUR CELLS DURING BATTLE</div>
     <div class="equipped-banner" id="equippedBanner">
@@ -729,6 +755,7 @@ fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=
       window.ethUsdRate = d.ethereum.usd; 
       if (window.TapStarUI) window.TapStarUI.refresh();
       loadLobby();
+      updatePrivateRoomUsdHint();
     } 
   })
   .catch(e => console.warn('CoinGecko fetch failed', e));
@@ -749,11 +776,31 @@ window.toggleCurrency = function() {
   
   if (window.TapStarUI) window.TapStarUI.refresh();
   loadLobby();
+  updatePrivateRoomUsdHint();
   
   if (document.getElementById('screen-game').classList.contains('active') && !isVsPC) {
     document.getElementById('displayStake').textContent = window.formatCurrency(stakeAmount) + ' EACH';
     document.getElementById('displayPot').textContent   = window.formatCurrency(stakeAmount * 2);
   }
+}
+
+function updatePrivateRoomUsdHint() {
+  const val = parseFloat(document.getElementById('roomStakeInput').value) || 0;
+  const hint = document.getElementById('roomStakeUsdHint');
+  if (hint) {
+    hint.textContent = window.currencyMode === 'USD' ? `≈ ${(val / window.ethUsdRate).toFixed(6)} ETH` : `≈ $${(val * window.ethUsdRate).toFixed(2)}`;
+  }
+  
+  document.querySelectorAll('#screen-room .preset-btn').forEach(btn => {
+    const amt = parseFloat(btn.dataset.amt);
+    if (amt) {
+      if (window.currencyMode === 'USD') {
+        btn.textContent = window.formatCurrency(amt);
+      } else {
+        btn.textContent = amt.toFixed(3);
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -775,9 +822,6 @@ let auth, db, firestore;
 let lastSyncTimestamp = 0;
 let cellTimestamps = {};
 
-// ═══════════════════════════════════════════════════════════
-//  CLOCK SYNC — Shared time across both players via Firebase
-// ═══════════════════════════════════════════════════════════
 let clockOffset = 0;
 function sharedNow() { return Date.now() + clockOffset; }
 
@@ -802,8 +846,8 @@ const PROTOCOL_FEE        = 0.05;
 const POLYGON_CHAIN_ID    = "0x89";
 const POLYGON_TESTNET_ID  = "0x13882";
 const GRID_SIZE           = 12;
-const QUICK_MATCH_STAKE   = 0.001;  // 0.001 ETH per side
-window.QUICK_MATCH_STAKE  = QUICK_MATCH_STAKE;  // expose to wallet UI
+const QUICK_MATCH_STAKE   = 0.001;
+window.QUICK_MATCH_STAKE  = QUICK_MATCH_STAKE;
 const SYNC_INTERVAL_MS    = 400;
 
 const AI_CONFIG = {
@@ -813,11 +857,7 @@ const AI_CONFIG = {
   insane: { interval: 55,   stealChance: 0.88, comboChance: 0.85, comboMax: 5 },
 };
 
-// ═══════════════════════════════════════════════════════════
-//  MEDAL CATALOGUE
-// ═══════════════════════════════════════════════════════════
 const ALL_MEDALS = [
-  // PREMIUM
   { id:'crown',     emoji:'👑', name:'THE CROWN',      desc:'Royalty of the arena.',        type:'premium', price:100 },
   { id:'diamond',   emoji:'💎', name:'DIAMOND',         desc:'Rarest gem in the game.',      type:'premium', price:100 },
   { id:'fire',      emoji:'🔥', name:'INFERNO',         desc:'Set the board ablaze.',        type:'premium', price:75  },
@@ -838,7 +878,6 @@ const ALL_MEDALS = [
   { id:'vortex',    emoji:'🌀', name:'VORTEX',          desc:'Suck them into your spiral.',  type:'premium', price:50  },
   { id:'gem',       emoji:'💠', name:'AZURE GEM',       desc:'Cool, calculated, deadly.',    type:'premium', price:55  },
   { id:'katana',    emoji:'🗡️', name:'KATANA MASTER',   desc:'One cut, all cells.',          type:'premium', price:70  },
-  // ACHIEVEMENTS
   { id:'first_blood', emoji:'🩸', name:'FIRST BLOOD',   desc:'Win your first game.',
     type:'achievement', condition:s=>s.totalWins>=1,   progress:s=>Math.min(s.totalWins||0,1),    target:1   },
   { id:'ten_wins',    emoji:'🔟', name:'DECA WARRIOR',  desc:'10 total wins.',
@@ -868,11 +907,10 @@ const ALL_MEDALS = [
 // ═══════════════════════════════════════════════════════════
 //  APP STATE
 // ═══════════════════════════════════════════════════════════
-let currentUser     = null; // { uid, username, walletAddress }
+let currentUser     = null;
 let walletAddress   = null;
 let walletBalance   = 0;
 
-// Game state
 let gameRunning     = false;
 let matchEnded      = false;
 let countdownActive = false;
@@ -901,10 +939,8 @@ let currentStreak   = 0;
 let equippedMedalId = localStorage.getItem('tapstar_equipped') || null;
 let currentStoreTab = 'premium';
 let currentLbPeriod = 'daily';
+let pendingAccountDetails = null; // Used for T&C intercept
 
-// ═══════════════════════════════════════════════════════════
-//  FULL RESET — Called before every game starts
-// ═══════════════════════════════════════════════════════════
 function fullResetGameState() {
   if (timerInterval)     { clearInterval(timerInterval);     timerInterval = null; }
   if (aiInterval)        { clearInterval(aiInterval);        aiInterval = null; }
@@ -977,9 +1013,6 @@ let opponentScore   = 0;
 let gameStartTime   = null;
 let opponentMedalEmoji = null;
 
-// ═══════════════════════════════════════════════════════════
-//  LOCAL STORAGE HELPERS
-// ═══════════════════════════════════════════════════════════
 const LS = {
   get: k => { try { return JSON.parse(localStorage.getItem(k)||'null'); } catch { return null; } },
   set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
@@ -999,14 +1032,18 @@ function getMedalEmoji(player) {
   return opponentMedalEmoji || null;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  SCREEN NAVIGATION
-// ═══════════════════════════════════════════════════════════
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
 }
+
+// ═══════════════════════════════════════════════════════════
+//  OVERLAYS (Terms & Tutorial)
+// ═══════════════════════════════════════════════════════════
+function openTutorial() { document.getElementById('tutorial-overlay').classList.add('show'); }
+function closeTutorial() { document.getElementById('tutorial-overlay').classList.remove('show'); }
+function closeTerms() { document.getElementById('terms-overlay').classList.remove('show'); pendingAccountDetails = null; }
 
 // ═══════════════════════════════════════════════════════════
 //  AUTH CONNECTION
@@ -1071,10 +1108,8 @@ async function createAccount() {
   const username = usernameRaw;
 
   if (!firebaseReady) {
-    currentUser = { uid: 'local_' + Date.now(), username, email, walletAddress: walletAddress || null };
-    LS.set('tapstar_user', currentUser);
-    loadLobby();
-    showScreen('screen-lobby');
+    pendingAccountDetails = { isLocal: true, username, email, password };
+    document.getElementById('terms-overlay').classList.add('show');
     return;
   }
 
@@ -1083,6 +1118,31 @@ async function createAccount() {
     const snap = await firestore.collection('usernames').doc(username.toLowerCase()).get();
     if (snap.exists) { errEl.textContent = '// USERNAME TAKEN — CHOOSE ANOTHER'; return; }
 
+    errEl.textContent = '';
+    pendingAccountDetails = { isLocal: false, username, email, password };
+    document.getElementById('terms-overlay').classList.add('show');
+
+  } catch(e) {
+    errEl.textContent = '// ERROR: ' + e.message;
+  }
+}
+
+async function acceptTermsAndCreateAccount() {
+  document.getElementById('terms-overlay').classList.remove('show');
+  const errEl = document.getElementById('authError');
+  
+  if (!pendingAccountDetails) return;
+  const { isLocal, username, email, password } = pendingAccountDetails;
+
+  if (isLocal) {
+    currentUser = { uid: 'local_' + Date.now(), username, email, walletAddress: walletAddress || null };
+    LS.set('tapstar_user', currentUser);
+    loadLobby();
+    showScreen('screen-lobby');
+    return;
+  }
+
+  try {
     errEl.textContent = '// CREATING ACCOUNT...';
     const userCredential = await auth.createUserWithEmailAndPassword(email, password);
     const uid = userCredential.user.uid;
@@ -1166,6 +1226,7 @@ async function startQuickMatch() {
 
   showScreen('screen-mm');
   document.getElementById('mmStatus').textContent = '// SCANNING FOR AVAILABLE PLAYERS...';
+  document.getElementById('mmStakeDisplay').textContent = `STAKE: ${window.formatCurrency(QUICK_MATCH_STAKE)}`;
 
   if (!firebaseReady) {
     setTimeout(() => {
@@ -1266,7 +1327,10 @@ function generateRoomCode() {
   return code;
 }
 
-function setRoomStake(v) { document.getElementById('roomStakeInput').value = v; }
+function setRoomStake(v) { 
+  document.getElementById('roomStakeInput').value = v; 
+  updatePrivateRoomUsdHint();
+}
 
 async function createPrivateRoom() {
   if (!currentUser) { showToast('Create an account first'); return; }
@@ -1407,6 +1471,7 @@ async function leaveRoom() {
   document.getElementById('room-joined').style.display  = 'none';
   document.getElementById('joinCodeInput').value = '';
   document.getElementById('roomStakeInput').value = '0.001';
+  updatePrivateRoomUsdHint();
 
   showScreen('screen-lobby');
 }
@@ -2034,6 +2099,15 @@ function endGame() {
 
   if (winnerNum !== null) saveLbResult(currentUser?.username || 'ANON', polWon, isVsPC, difficulty);
   
+  const rematchBtn = document.getElementById('btnRematch');
+  if (rematchBtn) {
+    if (isOnlinePvP) {
+      rematchBtn.style.display = 'none';
+    } else {
+      rematchBtn.style.display = 'inline-block';
+    }
+  }
+
   document.getElementById('result-overlay').classList.add('show');
 }
 
