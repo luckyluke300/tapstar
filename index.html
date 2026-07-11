@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>TAP STAR</title>
 
-
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -17,6 +16,22 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(0,255,204,.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(255,51,102,.03) 0%,transparent 60%);}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999;}
+
+/* ── SPACE BACKGROUND ── */
+#space-bg { position: fixed; inset: 0; z-index: -999; overflow: hidden; background: var(--bg); pointer-events: none; }
+.star-layer { position: absolute; background: transparent; }
+.star-layer::after { content: " "; position: absolute; top: 2000px; background: transparent; box-shadow: inherit; }
+#stars1 { width: 1px; height: 1px; box-shadow: 12vw 15vh #fff, 24vw 75vh #fff, 35vw 34vh #fff, 48vw 85vh #fff, 67vw 11vh #fff, 82vw 56vh #fff, 93vw 22vh #fff, 5vw 92vh #fff, 88vw 88vh #fff, 55vw 45vh #fff, 72vw 78vh #fff, 18vw 60vh #fff; animation: animStar 120s linear infinite; }
+#stars1::after { width: 1px; height: 1px; }
+#stars2 { width: 2px; height: 2px; box-shadow: 8vw 25vh #fff, 28vw 85vh #fff, 42vw 14vh #fff, 58vw 65vh #fff, 77vw 31vh #fff, 89vw 96vh #fff, 13vw 42vh #fff, 95vw 12vh #fff, 62vw 85vh #fff; animation: animStar 160s linear infinite; }
+#stars2::after { width: 2px; height: 2px; }
+#stars3 { width: 3px; height: 3px; box-shadow: 19vw 55vh #fff, 39vw 25vh #fff, 52vw 94vh #fff, 78vw 51vh #fff, 91vw 76vh #fff, 10vw 8vh #fff; animation: animStar 200s linear infinite; }
+#stars3::after { width: 3px; height: 3px; }
+@keyframes animStar { from { transform: translateY(0px); } to { transform: translateY(-2000px); } }
+
+.shooting-star { position: absolute; top: 15vh; left: 85vw; width: 80px; height: 2px; background: linear-gradient(90deg, rgba(255,255,255,0.7), transparent); transform: rotate(-45deg); animation: shoot 7s linear infinite; opacity: 0; }
+.shooting-star:nth-child(5) { top: 40vh; left: 110vw; animation-delay: 4s; animation-duration: 9s; }
+@keyframes shoot { 0% { transform: translate(0, 0) rotate(-45deg); opacity: 1; } 15% { transform: translate(-600px, 600px) rotate(-45deg); opacity: 0; } 100% { opacity: 0; } }
 
 /* ── SCREENS ── */
 .screen{display:none;flex-direction:column;min-height:100vh;max-width:900px;margin:0 auto;padding:20px;gap:16px;}
@@ -59,15 +74,18 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .wallet-info span{color:var(--gold);}
 .wallet-connect-btn{background:transparent;border:1px solid #ff6600;color:#ff6600;font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;padding:6px 12px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
 .wallet-connect-btn:hover{background:rgba(255,102,0,.1);}
-.main-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.mode-btn{padding:28px 20px;font-family:'Orbitron',monospace;font-weight:700;font-size:.8rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:10px;}
+
+/* Grid updated for PC alignment */
+.main-btns{display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;}
+.mode-wrapper{display:flex;flex-direction:column;gap:8px;}
+.mode-btn{flex:1;padding:28px 20px;font-family:'Orbitron',monospace;font-weight:700;font-size:.8rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
 .mode-btn-icon{font-size:2rem;line-height:1;}
 .mode-btn-sub{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:1px;font-weight:400;opacity:.7;}
 .mode-btn.pvp{background:linear-gradient(135deg,rgba(0,255,204,.12),rgba(255,51,102,.08));border:1px solid var(--p1);color:var(--p1);}
 .mode-btn.pvp:hover{box-shadow:0 0 40px rgba(0,255,204,.2);}
 .mode-btn.private{background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,51,102,.06));border:1px solid var(--gold);color:var(--gold);}
 .mode-btn.private:hover{box-shadow:0 0 40px rgba(255,215,0,.2);}
-.mode-btn.pc{background:linear-gradient(135deg,rgba(74,106,138,.15),rgba(255,51,102,.05));border:1px solid #4a6a8a;color:#4a6a8a;grid-column:1/-1;}
+.mode-btn.pc{background:linear-gradient(135deg,rgba(74,106,138,.15),rgba(255,51,102,.05));border:1px solid #4a6a8a;color:#4a6a8a;grid-column:auto;}
 .mode-btn.pc:hover{border-color:var(--text);color:var(--text);}
 .network-warn{background:rgba(255,51,102,.1);border:1px solid var(--p2);padding:10px 16px;font-size:.75rem;color:var(--p2);display:none;}
 .network-warn.show{display:block;}
@@ -312,6 +330,10 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* ── VS PC MODE SCREEN ── */
 #screen-vspc{gap:16px;}
 
+@media(max-width:768px){
+  .main-btns{grid-template-columns:1fr;}
+}
+
 @media(max-width:600px){
   .logo{font-size:1.2rem;letter-spacing:2px;}
   .mode-grid{grid-template-columns:1fr;}
@@ -323,13 +345,20 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   .tap-btn{padding:16px;font-size:.9rem;}
   .auth-box{padding:28px 20px;}
   .auth-logo{font-size:1.7rem;}
-  .main-btns{grid-template-columns:1fr;}
   .profile-card{grid-template-columns:1fr 1fr;}
   .profile-username{grid-column:1/-1;}
 }
 </style>
 </head>
 <body>
+<div id="space-bg">
+  <div id="stars1" class="star-layer"></div>
+  <div id="stars2" class="star-layer"></div>
+  <div id="stars3" class="star-layer"></div>
+  <div class="shooting-star"></div>
+  <div class="shooting-star"></div>
+</div>
+
 <div id="ts-beta-banner" style="
   position:fixed;top:0;left:0;right:0;
   background:#1a0a1a;
@@ -403,6 +432,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <div class="lobby-header">
     <div class="logo">TAP<span>★</span>STAR</div>
     <div class="header-btns">
+      <button class="hbtn curr-toggle" onclick="toggleCurrency()">[ ⇄ SHOW USD ]</button>
       <button class="hbtn gold" onclick="openStore()">🏅 MEDALS</button>
       <button class="hbtn gold" onclick="openLeaderboard()">🏆 BOARD</button>
       <button class="hbtn" id="lobbyWalletBtn" onclick="connectWalletLobby()">[ CONNECT WALLET ]</button>
@@ -413,7 +443,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="profile-username" id="profileUsername">—</div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileWins">0</div><div class="profile-stat-label">WINS</div></div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileLosses">0</div><div class="profile-stat-label">LOSSES</div></div>
-    <div class="profile-stat"><div class="profile-stat-val" id="profilePol">0.00</div><div class="profile-stat-label">ETH WON</div></div>
+    <div class="profile-stat"><div class="profile-stat-val" id="profilePol">0.0000 ETH</div><div class="profile-stat-label">EARNED</div></div>
     <div class="profile-stat"><div class="profile-stat-val" id="profileStreak">0</div><div class="profile-stat-label">STREAK</div></div>
   </div>
   <div class="wallet-row">
@@ -422,21 +452,28 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
   <div style="font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:4px;color:#4a6a8a;">// SELECT GAME MODE</div>
   <div class="main-btns">
-    <button class="mode-btn pvp" onclick="startQuickMatch()">
-      <span class="mode-btn-icon">⚔</span>
-      QUICK MATCH
-      <span class="mode-btn-sub">RANDOM OPPONENT · 0.001 ETH STAKE</span>
-    </button>
-    <button class="mode-btn private" onclick="showScreen('screen-room')">
-      <span class="mode-btn-icon">🔒</span>
-      PRIVATE ROOM
-      <span class="mode-btn-sub">INVITE A FRIEND · CUSTOM STAKE</span>
-    </button>
-    <button class="mode-btn pc" onclick="showScreen('screen-vspc')">
-      <span class="mode-btn-icon">🤖</span>
-      VS COMPUTER
-      <span class="mode-btn-sub">FREE PRACTICE · NO WALLET NEEDED</span>
-    </button>
+    <div class="mode-wrapper">
+      <button class="mode-btn pvp" onclick="startQuickMatch()">
+        <span class="mode-btn-icon">⚔</span>
+        QUICK MATCH
+        <span class="mode-btn-sub">RANDOM OPPONENT · 0.001 ETH STAKE</span>
+      </button>
+      <div id="tsQuickHint" class="ts-stake-hint"></div>
+    </div>
+    <div class="mode-wrapper">
+      <button class="mode-btn private" onclick="showScreen('screen-room')">
+        <span class="mode-btn-icon">🔒</span>
+        PRIVATE ROOM
+        <span class="mode-btn-sub">INVITE A FRIEND · CUSTOM STAKE</span>
+      </button>
+    </div>
+    <div class="mode-wrapper">
+      <button class="mode-btn pc" onclick="showScreen('screen-vspc')">
+        <span class="mode-btn-icon">🤖</span>
+        VS COMPUTER
+        <span class="mode-btn-sub">FREE PRACTICE · NO WALLET NEEDED</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -572,7 +609,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="stake-info-bar">
       <div class="stake-info-item">STAKED: <span id="displayStake">0.000 ETH</span> EACH</div>
       <div class="stake-info-item">POT: <span id="displayPot">0.000 ETH</span></div>
-      <div class="stake-info-item curr-toggle" style="cursor:pointer; color:var(--p1); font-weight:bold; border-bottom:1px dashed var(--p1);" onclick="toggleCurrency()">[ ⇄ SHOW USD ]</div>
       <div class="stake-info-item">MODE: <span id="displayMode">DUEL</span></div>
     </div>
     <div class="territory-bar"><div class="territory-fill" id="territoryFill" style="width:50%"></div></div>
@@ -683,28 +719,40 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 // ═══════════════════════════════════════════════════════════
 //  CURRENCY & ETH PRICE FETCH
 // ═══════════════════════════════════════════════════════════
-let currencyMode = 'ETH';
-let ethUsdRate = 3000; // default fallback
+window.currencyMode = 'ETH';
+window.ethUsdRate = 3000;
 
 fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
   .then(r => r.json())
-  .then(d => { if (d.ethereum?.usd) ethUsdRate = d.ethereum.usd; })
+  .then(d => { 
+    if (d.ethereum?.usd) { 
+      window.ethUsdRate = d.ethereum.usd; 
+      if (window.TapStarUI) window.TapStarUI.refresh();
+      loadLobby();
+    } 
+  })
   .catch(e => console.warn('CoinGecko fetch failed', e));
 
-function formatCurrency(ethVal) {
-  if (currencyMode === 'USD') return '$' + (ethVal * ethUsdRate).toFixed(2);
-  return ethVal.toFixed(4) + ' ETH';
-}
+window.formatCurrency = function(ethVal, decimals = 4) {
+  const val = parseFloat(ethVal) || 0;
+  if (window.currencyMode === 'USD') return '$' + (val * window.ethUsdRate).toFixed(2);
+  if (val === 0) return '0.0000 ETH';
+  if (val < 0.0001) return val.toExponential(2) + ' ETH';
+  return val.toFixed(decimals) + ' ETH';
+};
 
-function toggleCurrency() {
-  currencyMode = currencyMode === 'ETH' ? 'USD' : 'ETH';
+window.toggleCurrency = function() {
+  window.currencyMode = window.currencyMode === 'ETH' ? 'USD' : 'ETH';
   document.querySelectorAll('.curr-toggle').forEach(el => {
-    el.textContent = `[ ⇄ SHOW ${currencyMode === 'ETH' ? 'USD' : 'ETH'} ]`;
+    el.textContent = `[ ⇄ SHOW ${window.currencyMode === 'ETH' ? 'USD' : 'ETH'} ]`;
   });
   
+  if (window.TapStarUI) window.TapStarUI.refresh();
+  loadLobby();
+  
   if (document.getElementById('screen-game').classList.contains('active') && !isVsPC) {
-    document.getElementById('displayStake').textContent = formatCurrency(stakeAmount);
-    document.getElementById('displayPot').textContent   = formatCurrency(stakeAmount * 2);
+    document.getElementById('displayStake').textContent = window.formatCurrency(stakeAmount) + ' EACH';
+    document.getElementById('displayPot').textContent   = window.formatCurrency(stakeAmount * 2);
   }
 }
 
@@ -725,7 +773,7 @@ const firebaseConfig = {
 let firebaseReady = false;
 let auth, db, firestore;
 let lastSyncTimestamp = 0;
-let cellTimestamps = {}; // Track when each cell was captured
+let cellTimestamps = {};
 
 // ═══════════════════════════════════════════════════════════
 //  CLOCK SYNC — Shared time across both players via Firebase
@@ -837,11 +885,11 @@ let pcGameMode      = 15;
 let timerInterval   = null;
 let aiInterval      = null;
 let syncInterval    = null;
-let powerInterval   = null; // NEW: track power-up spawn interval
-let countdownInterval = null; // NEW: track countdown interval
-let disconnectRefs  = [];  // onDisconnect refs to cancel on normal game end
-let disconnectFRRef = null; // the finalReport onDisconnect ref (updated with scores)
-let disconnectSyncN = 0;   // throttle counter for onDisconnect score refreshes
+let powerInterval   = null; 
+let countdownInterval = null; 
+let disconnectRefs  = [];  
+let disconnectFRRef = null; 
+let disconnectSyncN = 0;   
 let timeLeft        = 30;
 let cells           = [];
 let taps1           = 0, taps2 = 0;
@@ -1105,7 +1153,7 @@ function loadLobby() {
   const stats = getStats();
   document.getElementById('profileWins').textContent   = stats.totalWins    || 0;
   document.getElementById('profileLosses').textContent = (stats.gamesPlayed||0) - (stats.totalWins||0);
-  document.getElementById('profilePol').textContent    = (stats.totalPolWon||0).toFixed(2);
+  document.getElementById('profilePol').textContent    = window.formatCurrency(stats.totalPolWon || 0);
   document.getElementById('profileStreak').textContent = stats.bestStreak   || 0;
   document.getElementById('mmPlayerName').textContent  = currentUser.username;
 }
@@ -1578,8 +1626,6 @@ function startGameScreen(vsPC, onlinePvP) {
  
   const myMedal = getMedalById(equippedMedalId);
   setText('medalBadge1', myMedal?.emoji || '');
-  
-  const currToggle = document.querySelector('.curr-toggle');
  
   if (vsPC) {
     const aiMedals = ['🤖','👾','💀','🔴','💥'];
@@ -1595,7 +1641,6 @@ function startGameScreen(vsPC, onlinePvP) {
     
     setText('displayStake', 'FREE');
     setText('displayPot', 'FREE');
-    if (currToggle) currToggle.style.display = 'none';
   } else {
     opponentMedalEmoji = null;
     setText('medalBadge2', '');
@@ -1606,9 +1651,8 @@ function startGameScreen(vsPC, onlinePvP) {
     setStyle('tapBtn2', 'display', 'none');
     setClass('tapArea', 'vs-pc', false);
     
-    setText('displayStake', formatCurrency(stakeAmount));
-    setText('displayPot', formatCurrency(stakeAmount * 2));
-    if (currToggle) currToggle.style.display = 'block';
+    setText('displayStake', window.formatCurrency(stakeAmount) + ' EACH');
+    setText('displayPot', window.formatCurrency(stakeAmount * 2));
 
     if (firebaseReady && currentRoomCode) {
       const ts = sharedNow();
@@ -2104,7 +2148,7 @@ function backToLobby() {
   if (tb2) {
     tb2.disabled = false;
     tb2.style.opacity = '1';
-    tb2.style.display = 'none'; // Re-hide the opponent button reliably
+    tb2.style.display = 'none'; 
   }
   
   const tc2 = document.getElementById('tapCount2');

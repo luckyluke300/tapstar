@@ -57,7 +57,10 @@
               <button class="ts-preset" data-amt="0.05">0.05</button>
               <button class="ts-preset" data-amt="0.1">0.1</button>
             </div>
-            <input type="number" class="ts-modal-input" id="tsDepAmount" placeholder="0.000" step="0.0001" min="0">
+            <div>
+              <input type="number" class="ts-modal-input" id="tsDepAmount" placeholder="0.000" step="0.0001" min="0">
+              <div class="ts-modal-sub" id="tsDepUsdHint" style="margin-top:8px; color:var(--gold);">≈ $0.00</div>
+            </div>
             <div class="ts-modal-error" id="tsDepError"></div>
             <div class="ts-modal-actions">
               <button class="ts-walbtn" onclick="window.TapStarUI.closeModal('tsModalDeposit')">CANCEL</button>
@@ -77,7 +80,10 @@
               <div class="ts-mb-cell"><div class="ts-mb-label">WALLET</div><div class="ts-mb-val" id="tsWdrWallet">—</div></div>
               <div class="ts-mb-cell"><div class="ts-mb-label">HAND</div><div class="ts-mb-val" id="tsWdrHand">—</div></div>
             </div>
-            <input type="number" class="ts-modal-input" id="tsWdrAmount" placeholder="0.000" step="0.0001" min="0">
+            <div>
+              <input type="number" class="ts-modal-input" id="tsWdrAmount" placeholder="0.000" step="0.0001" min="0">
+              <div class="ts-modal-sub" id="tsWdrUsdHint" style="margin-top:8px; color:var(--gold);">≈ $0.00</div>
+            </div>
             <div class="ts-modal-error" id="tsWdrError"></div>
             <div class="ts-modal-actions">
               <button class="ts-walbtn" onclick="window.TapStarUI.closeModal('tsModalWithdraw')">CANCEL</button>
@@ -98,12 +104,6 @@
         old.id = 'tsNetWarn';
         old.textContent = '⚠ WRONG NETWORK — SWITCH TO BASE IN YOUR WALLET';
       }
-    }
-
-    function fmt(eth, decimals = 4) {
-      if (eth === 0 || !isFinite(eth)) return '0.0000';
-      if (eth < 0.0001) return eth.toExponential(2);
-      return eth.toFixed(decimals);
     }
 
     function renderWalletCard(s) {
@@ -129,11 +129,11 @@
       card.innerHTML = `
         <div class="ts-wallet-row">
           <div class="ts-wallet-label">WALLET · ${s.addressShort}</div>
-          <div class="ts-wallet-value gold">${fmt(s.walletEth)} ${s.currency}</div>
+          <div class="ts-wallet-value gold">${window.formatCurrency(s.walletEth)}</div>
         </div>
         <div class="ts-wallet-row">
           <div class="ts-wallet-label">HAND</div>
-          <div class="ts-wallet-value cyan">${fmt(s.handEth)} ${s.currency}</div>
+          <div class="ts-wallet-value cyan">${window.formatCurrency(s.handEth)}</div>
         </div>
         <div class="ts-wallet-actions">
           <button class="ts-walbtn gold" id="tsBtnDeposit">+ DEPOSIT</button>
@@ -165,22 +165,17 @@
       if (!quickBtn) return;
 
       let hint = document.getElementById('tsQuickHint');
-      if (!hint) {
-        hint = document.createElement('div');
-        hint.id = 'tsQuickHint';
-        hint.className = 'ts-stake-hint';
-        quickBtn.insertAdjacentElement('afterend', hint);
-      }
+      if (!hint) return;
 
       const stake = (typeof window.QUICK_MATCH_STAKE !== 'undefined') ? window.QUICK_MATCH_STAKE : 0.001;
 
       if (!s.connected) {
-        hint.textContent = `// CONNECT WALLET TO PLAY · ${stake} ${s.currency} ENTRY`;
+        hint.textContent = `// CONNECT WALLET TO PLAY · ${window.formatCurrency(stake)} ENTRY`;
         hint.className = 'ts-stake-hint';
       } else {
         const verdict = W.canAffordStake(stake);
         if (verdict.ok) {
-          hint.textContent = `// READY · ${stake} ${s.currency} ENTRY · YOUR HAND: ${fmt(s.handEth)}`;
+          hint.textContent = `// READY · ${window.formatCurrency(stake)} ENTRY · YOUR HAND: ${window.formatCurrency(s.handEth)}`;
           hint.className = 'ts-stake-hint ok';
         } else {
           hint.textContent = '// ' + verdict.reason.toUpperCase();
@@ -189,7 +184,7 @@
       }
 
       const sub = quickBtn.querySelector('.mode-btn-sub');
-      if (sub) sub.textContent = `RANDOM OPPONENT · ${stake} ${s.currency} STAKE`;
+      if (sub) sub.textContent = `RANDOM OPPONENT · ${window.formatCurrency(stake)} STAKE`;
     }
 
     function openModal(id) { document.getElementById(id)?.classList.add('show'); }
@@ -199,14 +194,17 @@
       if (id === 'tsModalWithdraw') stopCooldownTimer();
       m?.querySelectorAll('input').forEach(i => i.value = '');
       m?.querySelectorAll('.ts-modal-error').forEach(e => e.textContent = '');
+      m?.querySelectorAll('.ts-modal-sub').forEach(e => {
+        if (e.id.includes('UsdHint')) e.textContent = window.currencyMode === 'USD' ? '≈ 0.0000 ETH' : '≈ $0.00';
+      });
       m?.querySelectorAll('.ts-preset.active').forEach(p => p.classList.remove('active'));
     }
 
     function openDepositModal() {
       const s = W.getState();
       if (!s.connected) { W.connect(); return; }
-      document.getElementById('tsDepWallet').textContent = fmt(s.walletEth) + ' ' + s.currency;
-      document.getElementById('tsDepHand').textContent   = fmt(s.handEth)   + ' ' + s.currency;
+      document.getElementById('tsDepWallet').textContent = window.formatCurrency(s.walletEth);
+      document.getElementById('tsDepHand').textContent   = window.formatCurrency(s.handEth);
       openModal('tsModalDeposit');
     }
 
@@ -245,8 +243,8 @@
     async function openWithdrawModal() {
       const s = W.getState();
       if (!s.connected) { W.connect(); return; }
-      document.getElementById('tsWdrWallet').textContent = fmt(s.walletEth) + ' ' + s.currency;
-      document.getElementById('tsWdrHand').textContent   = fmt(s.handEth)   + ' ' + s.currency;
+      document.getElementById('tsWdrWallet').textContent = window.formatCurrency(s.walletEth);
+      document.getElementById('tsWdrHand').textContent   = window.formatCurrency(s.handEth);
       openModal('tsModalWithdraw');
 
       stopCooldownTimer();
@@ -263,11 +261,23 @@
     }
 
     function wireModalActions() {
+      const updateUsdHint = (inputId, hintId) => {
+        const val = parseFloat(document.getElementById(inputId).value) || 0;
+        const hint = document.getElementById(hintId);
+        if (hint) {
+          hint.textContent = window.currencyMode === 'USD' ? `≈ ${(val / window.ethUsdRate).toFixed(6)} ETH` : `≈ $${(val * window.ethUsdRate).toFixed(2)}`;
+        }
+      };
+
+      document.getElementById('tsDepAmount').addEventListener('input', () => updateUsdHint('tsDepAmount', 'tsDepUsdHint'));
+      document.getElementById('tsWdrAmount').addEventListener('input', () => updateUsdHint('tsWdrAmount', 'tsWdrUsdHint'));
+
       document.querySelectorAll('#tsDepPresets .ts-preset').forEach(btn => {
         btn.onclick = () => {
           document.querySelectorAll('#tsDepPresets .ts-preset').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           document.getElementById('tsDepAmount').value = btn.dataset.amt;
+          updateUsdHint('tsDepAmount', 'tsDepUsdHint');
         };
       });
 
@@ -276,7 +286,7 @@
         const errEl = document.getElementById('tsDepError');
         if (!amt || amt <= 0) { errEl.textContent = 'Enter a valid amount'; return; }
         const s = W.getState();
-        if (amt > s.walletEth) { errEl.textContent = `Wallet only has ${fmt(s.walletEth)} ${s.currency}`; return; }
+        if (amt > s.walletEth) { errEl.textContent = `Wallet only has ${window.formatCurrency(s.walletEth)}`; return; }
         errEl.textContent = '';
         document.getElementById('tsDepGo').disabled = true;
         try {
@@ -291,7 +301,7 @@
         const errEl = document.getElementById('tsWdrError');
         if (!amt || amt <= 0) { errEl.textContent = 'Enter a valid amount'; return; }
         const s = W.getState();
-        if (amt > s.handEth) { errEl.textContent = `Hand only has ${fmt(s.handEth)} ${s.currency}`; return; }
+        if (amt > s.handEth) { errEl.textContent = `Hand only has ${window.formatCurrency(s.handEth)}`; return; }
         errEl.textContent = '';
         document.getElementById('tsWdrGo').disabled = true;
         try {
@@ -366,8 +376,14 @@
         if (a?.type === 'deposit')      showToast(`✓ DEPOSIT CONFIRMED`, 'success');
         else if (a?.type === 'withdraw' || a?.type === 'withdrawAll') showToast(`✓ WITHDRAWAL CONFIRMED`, 'success');
       }
-      if (event === 'matchWon')  showToast(`🏆 MATCH WON · +${fmt(arguments[0]?.payout)} ${s.currency}`, 'success');
-      if (event === 'matchLost') showToast(`✗ MATCH LOST · -${fmt(arguments[0]?.stake)} ${s.currency}`, 'error');
+      if (event === 'matchWon') {
+        const amt = window.formatCurrency(arguments[0]?.payout || 0);
+        showToast(`🏆 MATCH WON · +${amt}`, 'success');
+      }
+      if (event === 'matchLost') {
+        const amt = window.formatCurrency(arguments[0]?.stake || 0);
+        showToast(`✗ MATCH LOST · -${amt}`, 'error');
+      }
       if (event === 'connected') showToast(`✓ WALLET CONNECTED · ${s.addressShort}`, 'success');
       if (event === 'disconnected') showToast(`WALLET DISCONNECTED`);
     });
@@ -385,7 +401,24 @@
       openWithdrawModal,
       closeModal,
       canAffordStake: W.canAffordStake,
-      refresh: W.refreshBalances
+      refresh: () => {
+        renderWalletCard(W.getState());
+        renderStakeHint(W.getState());
+        
+        // Re-render open modal values live
+        const depModal = document.getElementById('tsModalDeposit');
+        if (depModal && depModal.classList.contains('show')) {
+          document.getElementById('tsDepWallet').textContent = window.formatCurrency(W.getState().walletEth);
+          document.getElementById('tsDepHand').textContent   = window.formatCurrency(W.getState().handEth);
+          document.getElementById('tsDepAmount').dispatchEvent(new Event('input'));
+        }
+        const wdrModal = document.getElementById('tsModalWithdraw');
+        if (wdrModal && wdrModal.classList.contains('show')) {
+          document.getElementById('tsWdrWallet').textContent = window.formatCurrency(W.getState().walletEth);
+          document.getElementById('tsWdrHand').textContent   = window.formatCurrency(W.getState().handEth);
+          document.getElementById('tsWdrAmount').dispatchEvent(new Event('input'));
+        }
+      }
     };
   });
 })();
