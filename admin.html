@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAPSTAR — Admin Dashboard</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --p1: #00ffcc;
+  --p2: #ff3366;
+  --bg: #040810;
+  --panel: #080f1a;
+  --border: #1a2a3a;
+  --gold: #ffd700;
+  --text: #c8d8e8;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  padding: 30px 20px;
+  min-height: 100vh;
+}
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 3px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px;
+  text-align: center;
+}
+.card-val {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+.card-label {
+  font-size: .65rem;
+  letter-spacing: 2px;
+  color: #4a6a8a;
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+.table-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+.panel-title {
+  font-family: 'Orbitron', monospace;
+  font-size: .8rem;
+  color: var(--p1);
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  font-family: 'Orbitron', monospace;
+  font-size: .6rem;
+  color: #4a6a8a;
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  font-size: .75rem;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(26,42,58,.5);
+}
+tr:hover td { background: rgba(0,255,204,.03); }
+
+/* Login Box */
+.login-box {
+  max-width: 400px;
+  margin: 80px auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+input {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 12px;
+  font-family: inherit;
+  font-size: .9rem;
+}
+button {
+  background: var(--p1);
+  color: #040810;
+  border: none;
+  padding: 12px;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 2px;
+}
+button:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN VIEW -->
+<div id="authView" class="login-box">
+  <div class="title" style="font-size: 1.2rem; text-align: center;">🔒 ADMIN LOGIN</div>
+  <input type="email" id="adminEmail" placeholder="ADMIN EMAIL">
+  <input type="password" id="adminPass" placeholder="PASSWORD">
+  <div id="loginError" style="color:var(--p2); font-size:.7rem; text-align:center;"></div>
+  <button onclick="loginAdmin()">LOGIN TO DASHBOARD</button>
+</div>
+
+<!-- MAIN DASHBOARD VIEW -->
+<div id="dashView" class="container" style="display: none;">
+  <div class="header">
+    <div class="title">TAPSTAR ANALYTICS</div>
+    <button onclick="logoutAdmin()" style="padding: 6px 14px; font-size: .7rem; background: transparent; border: 1px solid var(--border); color: var(--text);">LOGOUT</button>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-val" id="valMatches">0</div>
+      <div class="card-label">Total Matches</div>
+    </div>
+    <div class="card">
+      <div class="card-val" id="valPvp" style="color:var(--p1);">0</div>
+      <div class="card-label">PvP Matches</div>
+    </div>
+    <div class="card">
+      <div class="card-val" id="valVolume" style="color:var(--gold);">0.0000 ETH</div>
+      <div class="card-label">Staked Volume</div>
+    </div>
+    <div class="card">
+      <div class="card-val" id="valPlayers">0</div>
+      <div class="card-label">Total Unique Players</div>
+    </div>
+  </div>
+
+  <div class="table-panel">
+    <div class="panel-title">// MATCH LOGS HISTORY (RECENT 100)</div>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>TIME</th>
+            <th>MODE</th>
+            <th>PLAYERS</th>
+            <th>SCORE</th>
+            <th>WINNER</th>
+            <th>STAKE</th>
+            <th>LOCATION</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <tr><td colspan="7" style="text-align: center; color: #4a6a8a;">Loading match history...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC8fxId-d3aGiiInBMp_6mgsU1wk0g4G-o",
+  authDomain: "tapstar-52b5c.firebaseapp.com",
+  databaseURL: "https://tapstar-52b5c-default-rtdb.firebaseio.com",
+  projectId: "tapstar-52b5c",
+  storageBucket: "tapstar-52b5c.firebasestorage.app",
+  messagingSenderId: "866193967479",
+  appId: "1:866193967479:web:bf2a8a0caf4a997b89f972"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const firestore = firebase.firestore();
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('authView').style.display = 'none';
+    document.getElementById('dashView').style.display = 'flex';
+    loadDashboardData();
+  } else {
+    document.getElementById('authView').style.display = 'flex';
+    document.getElementById('dashView').style.display = 'none';
+  }
+});
+
+async function loginAdmin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass = document.getElementById('adminPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    errEl.textContent = e.message;
+  }
+}
+
+function logoutAdmin() {
+  auth.signOut();
+}
+
+async function loadDashboardData() {
+  const tbody = document.getElementById('logsTableBody');
+  try {
+    const snap = await firestore.collection('matches')
+      .orderBy('timestamp', 'desc')
+      .limit(100)
+      .get();
+
+    let totalMatches = snap.size;
+    let pvpMatches = 0;
+    let totalVolumeEth = 0;
+    let playerSet = new Set();
+    let rowsHtml = '';
+
+    snap.forEach(doc => {
+      const m = doc.data();
+      if (m.isOnlinePvP) pvpMatches++;
+      totalVolumeEth += (m.stakeEth || 0);
+      if (m.player1) playerSet.add(m.player1);
+      if (m.player2 && m.player2 !== 'COMPUTER') playerSet.add(m.player2);
+
+      const timeStr = m.createdAtIso ? m.createdAtIso.replace('T', ' ').slice(0, 16) : '—';
+      const modeStr = m.isOnlinePvP ? '⚔️ PvP' : '🤖 VS PC';
+
+      rowsHtml += `<tr>
+        <td style="color:#4a6a8a;">${timeStr}</td>
+        <td>${modeStr}</td>
+        <td><strong>${m.player1}</strong> <span style="color:#4a6a8a;">vs</span> <strong>${m.player2}</strong></td>
+        <td>${m.score1} - ${m.score2}</td>
+        <td style="color:var(--p1); font-weight:bold;">${m.winner}</td>
+        <td style="color:var(--gold);">${(m.stakeEth || 0).toFixed(4)} ETH</td>
+        <td style="color:#a0b0c0;">${m.location || 'GLOBAL'}</td>
+      </tr>`;
+    });
+
+    if (totalMatches === 0) {
+      rowsHtml = '<tr><td colspan="7" style="text-align: center; color: #4a6a8a;">No games recorded yet.</td></tr>';
+    }
+
+    document.getElementById('valMatches').textContent = totalMatches;
+    document.getElementById('valPvp').textContent = pvpMatches;
+    document.getElementById('valVolume').textContent = totalVolumeEth.toFixed(4) + ' ETH';
+    document.getElementById('valPlayers').textContent = playerSet.size;
+
+    tbody.innerHTML = rowsHtml;
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--p2); text-align:center;">Error loading stats: ${e.message}</td></tr>`;
+  }
+}
+</script>
+</body>
+</html>

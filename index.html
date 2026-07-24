@@ -903,7 +903,34 @@ const ALL_MEDALS = [
   { id:'veteran',  emoji:'🎗️', name:'VETERAN',         desc:'Play 100 total games.',
     type:'achievement', condition:s=>s.gamesPlayed>=100, progress:s=>Math.min(s.gamesPlayed||0,100), target:100},
 ];
+// ═══════════════════════════════════════════════════════════
+//  SILENT MATCH LOGGING (BACKGROUND ONLY)
+// ═══════════════════════════════════════════════════════════
+let userLocation = 'GLOBAL';
 
+// Fetch coarse location via IP (Privacy-friendly, silent lookup)
+fetch('https://ipapi.co/json/')
+  .then(r => r.json())
+  .then(d => {
+    if (d.country_code) {
+      userLocation = `${d.country_code} (${d.city || d.region || ''})`.trim();
+    }
+  })
+  .catch(() => { userLocation = 'UNKNOWN'; });
+
+async function logMatchToFirestore(matchData) {
+  if (!firebaseReady) return;
+  try {
+    await firestore.collection('matches').add({
+      ...matchData,
+      location: userLocation,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAtIso: new Date().toISOString()
+    });
+  } catch(e) {
+    console.warn('[analytics] Failed to log match:', e);
+  }
+}
 // ═══════════════════════════════════════════════════════════
 //  APP STATE
 // ═══════════════════════════════════════════════════════════
@@ -2098,7 +2125,19 @@ function endGame() {
   }
 
   if (winnerNum !== null) saveLbResult(currentUser?.username || 'ANON', polWon, isVsPC, difficulty);
-  
+  // Silently log match details to Firestore for admin dashboard
+logMatchToFirestore({
+  roomCode: currentRoomCode || 'LOCAL_VS_PC',
+  isOnlinePvP: isOnlinePvP,
+  isVsPC: isVsPC,
+  player1: currentUser?.username || 'ANON',
+  player2: opponentName,
+  score1: s1,
+  score2: s2,
+  winner: winnerNum === 1 ? (currentUser?.username || 'YOU') : (winnerNum === 2 ? opponentName : 'DRAW'),
+  stakeEth: isVsPC ? 0 : stakeAmount,
+  gameMode: gameMode
+});
   const rematchBtn = document.getElementById('btnRematch');
   if (rematchBtn) {
     if (isOnlinePvP) {
